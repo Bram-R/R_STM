@@ -3,9 +3,11 @@
 library(parallel)
 library(future.apply)
 library(microbenchmark)  # to track time
+library(bench)
 
+# FT: following is not needed but debated: https://forum.posit.co/t/project-oriented-workflow-setwd-rm-list-ls-and-computer-fires/3549
 # clear workspace
-rm(list = ls()) # clear objects from workspace
+# rm(list = ls()) # clear objects from workspace
 
 # Load functions from local scripts
 source("f_model.R")
@@ -18,7 +20,7 @@ n_states <- length(v_states) # number of health states
 v_treatments <- c("Current_practice", "New_treatment") # vector of strategy names
 n_treatments <- length(v_treatments)  # number of treatments
 n_t <- 100 # model time horizon 
-n_sim <- 50000 #0 # number of Monte-carlo simulations for probabilistic analyses
+n_sim <- 5 #0 # number of Monte-carlo simulations for probabilistic analyses
 set.seed(12345) # set seed
 
 #### Model inputs #### 
@@ -49,7 +51,7 @@ m_out_1a <- m_out_2a <- m_out_3a <- m_out_4a <- m_out_1b <- m_out_2b <- m_out_3b
 ) # end matrix
 
 #### Evaluate model calculation approaches with microbenchmark() #### 
-microbenchmark(
+bench::mark(
   approach1 = {
     # 1a Run model calculations with for loop and df conversion for mapply
     for(x in 1:n_sim){ # loop to run model for each row of PSA inputs
