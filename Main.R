@@ -1,4 +1,4 @@
-#### Description: Simple probabilistic state-transition model
+#### Description: Simple probabilistic state-transition model ####
 #### Conventions: n = single number, v = vector, df = dataframe, m = matrix, a = array
 library(parallel)
 library(future.apply)
