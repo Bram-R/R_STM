@@ -11,6 +11,7 @@ rm(list = ls()) # clear objects from workspace
 source("f_model.R")
 source("f_model_df_conversion.R")
 source("f_model_matrix.R")
+source("f_model_test.R")
 
 #### General ####
 v_states <- c("Gezond", "Ziek", "Dood") #  vector of model health states
@@ -41,7 +42,7 @@ df_input <- data.frame( # open input parameter dataframe
 ) # close input parameter dataframe
 
 #### Create matrix to store results #### 
-m_out_1a <- m_out_2a <- m_out_3a <- m_out_4a <- m_out_1b <- m_out_2b <- m_out_3b <- m_out_4b <- m_out_1c <- m_out_2c <- m_out_3c <- m_out_4c <- matrix( 
+m_out_1a <- m_out_2a <- m_out_3a <- m_out_4a <- m_out_1b <- m_out_2b <- m_out_3b <- m_out_4b <- m_out_1c <- m_out_2c <- m_out_3c <- m_out_4c <- m_out_4d <- matrix( 
   data = NA, 
   nrow = n_sim, 
   ncol = 4,
@@ -114,7 +115,7 @@ microbenchmark(
     # 3c Run model with parallel processing and matrix as input
     cl <- makeCluster(detectCores()) # Create a cluster with the number of cores available in your machine
     clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_matrix")) # Export necessary variables to the cluster
-    m_out_3c <- parLapply(cl, 1:n_sim, function(i) f_model_matrix(as.numeric(df_input[i, ])))
+    m_out_3c <- parLapply(cl, 1:n_sim, function(x) f_model_matrix(as.numeric(df_input[x, ])))
     m_out_3c <- do.call(rbind, m_out_3c) # combine list into a matrix
     stopCluster(cl)
   },
@@ -145,7 +146,15 @@ microbenchmark(
     }))
     plan(sequential) # Stop running in parallel on local computer
   },
-  times = 50 # how often should each approach be evaluated? More than 1 is useful to get more stable estimates and to account for random variation
+  
+  approach13 = {
+    # 4 Run model with calculations with future apply + test
+    m_out_4d <- future_sapply(1:n_sim, function(x) {
+      f_model_test(as.numeric(df_input[x, ]))
+    })
+  },
+  
+  times = 50 # how often each approach should be evaluated
 )
 
 summary(m_out_1a == m_out_2a) 
@@ -159,3 +168,4 @@ summary(m_out_4b == m_out_1c)
 summary(m_out_1c == m_out_2c)
 summary(m_out_2c == m_out_3c)
 summary(m_out_3c == m_out_4c)
+summary(m_out_4c == t(m_out_4d))
