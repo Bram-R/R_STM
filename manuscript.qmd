@@ -1,0 +1,101 @@
+---
+title: "Optimising State-Transition Models in R: A Performance and Usability Upgrade of the DARTH Framework for Cost-Effectiveness Analysis"
+bibliography: r_packages.bib
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#source("Main.R")
+
+library(parallel)
+library(future.apply)
+library(bench)  # to track time
+library(microbenchmark)  # to track time
+
+
+knitr::write_bib(.packages(), here::here("r_packages.bib"))
+```
+
+# Introduction
+
+Economic evaluations like cost-effectiveness analyses (CEA) play a pivotal role in health economics, guiding healthcare decision-makers in allocating resources efficiently by comparing the costs and outcomes of different interventions. Traditionally, such evaluations are performed using spreadsheet software like Microsoft Excel. While this offers an accessible platform for building economic models, it often lacks the flexibility, scalability, and computational efficiency required for more complex analyses. As the field evolves, there is a growing shift towards using statistical programming languages, such as R, for developing economic evaluation models. This shift represents a movement from a static, input-driven approach to a more dynamic, code-based methodology akin to software development, where models are constructed using structured programming techniques.
+
+State transition models (STMs) are widely used in CEA for their ability to simulate the progression of patients through different health states over time. Programming STMs in R allows for greater precision and flexibility when compared to spreadsheet-based approaches. In additon, it enables researchers to build more robust models that can handle large datasets and complex scenarios with ease. This approach mirrors the software development process, which typically involves an initial phase of pseudocoding to outline the model logic, followed by coding to implement the model, and performance optimisation to ensure efficiency.
+
+With the emergence of STM coding tutorials, such as those published by the Decision-Analytic modelling in R for Technology Assessment in Health (DARTH) working group, researchers now have access to a structured methodology for implementing STMs in R. Aspects like pseudocoding and model implementation are covered in these tutorials but since such tutorials usually focus on the basics, aspects like performance optimisation in terms of computational performance and code clarity are not covered.
+
+However, as datasets grow and models become more complex, the limitations in execution time and memory usage can hinder practical implementation. Moreover, improving computational performance without sacrificing code readability and reproducibility presents a significant challenge for code review and reproducibility.
+
+Achieving the right balance between computational time, memory usage, and code readability is a common challenge in programming. Optimising for one aspect can often compromise the others. For instance, while faster execution can be achieved by using more memory, this may lead to increased complexity and reduced code readability. Conversely, prioritising memory efficiency might slow down computations. In modern computing, memory is often considered "cheaper" than computational time, making it more practical to use additional memory to speed up execution, particularly in scenarios involving large datasets or complex models. This trade-off is especially relevant for state transition models in R, where balancing performance improvements with code clarity and reproducibility is crucial for maintaining the transparency and usability of economic evaluation models.
+
+This study aims to systematically evaluate and enhance the performance of the standard DARTH framework code for state transition models in R. By applying best practices from software development, such as modularisation, vectorisation, and parallel computing, we seek to strike a balance between reduced execution time, memory usage, and maintaining code clarity. This approach not only optimises the performance of the models but also ensures that they remain accessible and usable by the wider health economics community.
+
+# Methods
+
+This study adopted a structured approach to evaluate and optimise the performance of the state transition model (STM) code provided by the DARTH framework in R. To this end, we systematically explored the original baseline code and 12 different computational approaches to assess their impact on execution time, memory usage, and code readability. Performance metrics, including execution time and memory usage, were measured using the bench package (version `r packageVersion("bench")`),[@R-bench] which allowed for simultaneous assessment of these key parameters. We used an arbitrary ten iterations per approach to capture variance in the measurements.
+
+The baseline performance of the standard DARTH framework code was established as a reference point for comparison and executed without any modifications. Following the baseline assessment, 12 distinct computational approaches are implemented, each designed to explore various optimisation strategies:
+
+1.  Vectorisation to replace loops
+2.  Parallelisation using R packages such as parallel (version `r packageVersion("parallel")`)[@RJ-2021-048] and future.apply (version `r packageVersion("future.apply")`),[@R-future] to distribute computational tasks across multiple CPU cores (if available)
+3.  Memory management through minimising data structures and reducing redundant computations to decrease memory usage.
+
+Each approach was evaluated using the `bench::mark()` function, allowing simultaneous tracking of execution time and memory usage. The approaches are categorised as follows:
+
+| **Approach** | **Description** | **Parallelization** | **Input Type** | **Optimization Tool** |
+|---------------|---------------|---------------|---------------|---------------|
+| 1a | For loop with df conversion for mapply | No | Data Frame | For loop |
+| 1b | For loop without df conversion | No | Data Frame | For loop |
+| 1c | For loop with matrix as input | No | Matrix | For loop |
+| 2a | Apply with df conversion for mapply | No | Data Frame | Apply |
+| 2b | Apply without df conversion | No | Data Frame | Apply |
+| 2c | Apply with matrix as input | No | Matrix | Apply |
+| 3a | Parallel processing with df conversion for mapply | Yes | Data Frame | parLapply |
+| 3b | Parallel processing without df conversion | Yes | Data Frame | parLapply |
+| 3c | Parallel processing with matrix as input | Yes | Matrix | parLapply |
+| 4a | Future apply with df conversion for mapply | Yes | Data Frame | future_apply |
+| 4b | Future apply without df conversion | Yes | Data Frame | future_apply |
+| 4c | Future apply with matrix as input | Yes | Matrix | future_apply |
+
+The performance of each approach was evaluated using three key metrics provided by the bench package:
+
+1.  Execution time measured as the minimum, median, and maximum runtime across the five iterations, allowing for a robust comparison of computational efficiency.
+2.  Memory usage captured as the total memory allocated during execution, highlighting the memory demands of each approach.
+3.  Garbage collection defined as the number of garbage collection events, which can indicate inefficiencies in memory management.
+
+In addition to quantitative performance metrics, a qualitative assessment of code readability and complexity was conducted. Each approach was rated on a scale from 1 to 5 based on perceived readability based on comments and documentation. To this end, we asked xx independent rates across three Dutch resaerch institutions to assess the readability of the code. Code lengths defined as the number of lines per R-script were also measured to evaluate the complexity of each approach.
+
+Descriptive statistics summarised the changes in execution time and memory usage. Paired t-tests or non-parametric equivalents were used to assess the statistical significance of differences between the baseline and optimised approaches. ANOVA was employed to explore the impact of different hardware configurations on performance, providing a comprehensive understanding of how the optimised code performed across various setups.
+
+To quantify the overall performance of each approach, an integrated performance score (IPS) was calculated based on a weighted average of execution time, memory usage, and readability scores:
+
+$IPS=w1× \text{Execution Time Score} + w2× \text{Memory Usage Score} + w3× \text{Readability Score}$
+
+Where $w1$, $w2$, and $w3$ represent the relative importance of each criterion. For this study, equal weights were assigned to reflect a balanced emphasis on computational efficiency and code maintainability.
+
+All analysis were conducted across three actually used hardware configurations available to the authors.
+
+| Author | Hardware | Software |
+|------------------------|------------------------|------------------------|
+| A1 |  |  |
+| A2 | MacBook Pro, 14-inch, Nov 2023, Apple M3 chip, 8GB memory, macOS Sequoia 15.0 | R-version 4.1.0 |
+| A3 |  |  |
+
+: Software and hardware configurations
+
+# Results
+
+```{r}
+source(here::here("benchmark.R"))
+```
+
+
+```{r}
+benchmark_results %>% 
+  dplyr::select(expression, total_time, mem_alloc, qual_mean, overall_score)
+```
+
+
+
+# References
