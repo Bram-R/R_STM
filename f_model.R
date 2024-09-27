@@ -1,4 +1,4 @@
-#### Model calculations with df conversion for mapply ####
+#### Model calculations without df conversion for mapply ####
 
 f_model <- function(x) {
   with(as.list(df_input[x,]), {

@@ -1,13 +1,11 @@
-#### Description: Simple probabilistic state-transition model
+#### Description: Simple probabilistic state-transition model ####
 #### Conventions: n = single number, v = vector, df = dataframe, m = matrix, a = array
 library(parallel)
 library(future.apply)
 library(microbenchmark)  # to track time
-library(bench)
 
-# FT: following is not needed but debated: https://forum.posit.co/t/project-oriented-workflow-setwd-rm-list-ls-and-computer-fires/3549
 # clear workspace
-# rm(list = ls()) # clear objects from workspace
+rm(list = ls()) # clear objects from workspace
 
 # Load functions from local scripts
 source("f_model.R")
@@ -20,7 +18,7 @@ n_states <- length(v_states) # number of health states
 v_treatments <- c("Current_practice", "New_treatment") # vector of strategy names
 n_treatments <- length(v_treatments)  # number of treatments
 n_t <- 100 # model time horizon 
-n_sim <- 5 #0 # number of Monte-carlo simulations for probabilistic analyses
+n_sim <- 5000 #00 # number of Monte-carlo simulations for probabilistic analyses
 set.seed(12345) # set seed
 
 #### Model inputs #### 
@@ -51,7 +49,7 @@ m_out_1a <- m_out_2a <- m_out_3a <- m_out_4a <- m_out_1b <- m_out_2b <- m_out_3b
 ) # end matrix
 
 #### Evaluate model calculation approaches with microbenchmark() #### 
-bench::mark(
+microbenchmark(
   approach1 = {
     # 1a Run model calculations with for loop and df conversion for mapply
     for(x in 1:n_sim){ # loop to run model for each row of PSA inputs
@@ -99,6 +97,7 @@ bench::mark(
     cl <- makeCluster(detectCores()) # Create a cluster with the number of cores available in your machine
     clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input")) # Export necessary variables to the cluster
     m_out_3a <- parLapply(cl, 1:n_sim, f_model_df_conversion)
+    m_out_3a <- do.call(rbind, m_out_3a) # combine list into a matrix
     stopCluster(cl)
   },
   
@@ -107,14 +106,16 @@ bench::mark(
     cl <- makeCluster(detectCores()) # Create a cluster with the number of cores available in your machine
     clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input")) # Export necessary variables to the cluster
     m_out_3b <- parLapply(cl, 1:n_sim, f_model)
+    m_out_3b <- do.call(rbind, m_out_3b) # combine list into a matrix
     stopCluster(cl)
   },
   
   approach9 = {
     # 3c Run model with parallel processing and matrix as input
     cl <- makeCluster(detectCores()) # Create a cluster with the number of cores available in your machine
-    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input")) # Export necessary variables to the cluster
-    m_out_3c <- parLapply(cl, 1:n_sim, f_model_matrix)
+    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_matrix")) # Export necessary variables to the cluster
+    m_out_3c <- parLapply(cl, 1:n_sim, function(i) f_model_matrix(as.numeric(df_input[i, ])))
+    m_out_3c <- do.call(rbind, m_out_3c) # combine list into a matrix
     stopCluster(cl)
   },
   
@@ -144,20 +145,17 @@ bench::mark(
     }))
     plan(sequential) # Stop running in parallel on local computer
   },
-  times = 5 # how often should each approach be evaluated? More than 1 is useful to get more stable estimates and to account for random variation
+  times = 50 # how often should each approach be evaluated? More than 1 is useful to get more stable estimates and to account for random variation
 )
 
-
-# print(paste("For loop and df conversion for mapply took", round(time_1a, 2), "seconds."))
-# print(paste("For loop took", round(time_1b, 2), "seconds."))
-# print(paste("For loop with matrix as input took took", round(time_1c, 2), "seconds."))
-# print(paste("Apply and df conversion for mapply took", round(time_2a, 2), "seconds."))
-# print(paste("Apply took", round(time_2b, 2), "seconds."))
-# print(paste("Apply with matrix as input took", round(time_2c, 2), "seconds."))
-# print(paste("Parallel processing and df conversion for mapply took", round(time_3a, 2), "seconds."))
-# print(paste("Parallel processing took", round(time_3b, 2), "seconds."))
-# print(paste("Parallel processing with matrix as input took", round(time_3c, 2), "seconds."))
-# print(paste("Future apply and df conversion for mapply took", round(time_4a, 2), "seconds."))
-# print(paste("Future apply took", round(time_4b, 2), "seconds."))
-# print(paste("Future apply with matrix as input took", round(time_4c, 2), "seconds."))
-
+summary(m_out_1a == m_out_2a) 
+summary(m_out_2a == m_out_3a) 
+summary(m_out_3a == m_out_4a)
+summary(m_out_4a == m_out_1b) 
+summary(m_out_1b == m_out_2b)
+summary(m_out_2b == m_out_3b)
+summary(m_out_3b == m_out_4b)
+summary(m_out_4b == m_out_1c)
+summary(m_out_1c == m_out_2c)
+summary(m_out_2c == m_out_3c)
+summary(m_out_3c == m_out_4c)
