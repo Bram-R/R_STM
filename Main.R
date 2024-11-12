@@ -50,7 +50,7 @@ df_input <- data.frame( # open input parameter dataframe
 ) # close input parameter dataframe
 
 #### Create matrix to store results #### 
-m_out_1a <- m_out_2a <- m_out_3a <- m_out_4a <- m_out_1b <- m_out_2b <- m_out_3b <- m_out_4b <- m_out_1c <- m_out_2c <- m_out_3c <- m_out_4c <- m_out_4d <- matrix( 
+m_out_1a <- m_out_2a <- m_out_3a <- m_out_4a <- m_out_1b <- m_out_2b <- m_out_3b <- m_out_4b <- m_out_1c <- m_out_2c <- m_out_3c <- m_out_4c <- m_out_4d <- m_out_4e <- matrix( 
   data = NA, 
   nrow = n_sim, 
   ncol = 4,
@@ -164,7 +164,7 @@ microbenchmark(
   
   approach14 = {
     # 4 Run model with calculations with future apply + test + using rccp
-    m_out_4d <- future_sapply(1:n_sim, function(x) {
+    m_out_4e <- future_sapply(1:n_sim, function(x) {
       f_model_test_rcpp(as.numeric(df_input[x, ]))
     })
   },
