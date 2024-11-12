@@ -4,7 +4,11 @@ library(parallel)
 library(future.apply)
 library(microbenchmark)  # to track time
 
-# clear workspace
+# C++ code requires Rtools 
+library(Rcpp)
+library(RcppArmadillo)
+
+# Clear workspace
 rm(list = ls()) # clear objects from workspace
 
 # Load functions from local scripts
@@ -12,6 +16,10 @@ source("f_model.R")
 source("f_model_df_conversion.R")
 source("f_model_matrix.R")
 source("f_model_test.R")
+source("f_model_test_rcpp.R")
+
+# load loop function in C++
+sourceCpp("f_propagate_states.cpp")
 
 #### General ####
 v_states <- c("Gezond", "Ziek", "Dood") #  vector of model health states
@@ -151,6 +159,13 @@ microbenchmark(
     # 4 Run model with calculations with future apply + test
     m_out_4d <- future_sapply(1:n_sim, function(x) {
       f_model_test(as.numeric(df_input[x, ]))
+    })
+  },
+  
+  approach14 = {
+    # 4 Run model with calculations with future apply + test + using rccp
+    m_out_4d <- future_sapply(1:n_sim, function(x) {
+      f_model_test_rcpp(as.numeric(df_input[x, ]))
     })
   },
   
