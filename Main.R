@@ -157,16 +157,20 @@ microbenchmark(
   
   approach13 = {
     # 4 Run model with calculations with future apply + test
+    plan(multisession) ## Run in parallel on local computer
     m_out_4d <- future_sapply(1:n_sim, function(x) {
       f_model_test(as.numeric(df_input[x, ]))
     })
+    plan(sequential) # Stop running in parallel on local computer
   },
   
   approach14 = {
     # 4 Run model with calculations with future apply + test + using rccp
+    plan(multisession) ## Run in parallel on local computer
     m_out_4e <- future_sapply(1:n_sim, function(x) {
       f_model_test_rcpp(as.numeric(df_input[x, ]))
     })
+    plan(sequential) # Stop running in parallel on local computer
   },
   
   times = 50 # how often each approach should be evaluated
