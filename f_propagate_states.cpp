@@ -2,15 +2,17 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 
 // [[Rcpp::export]]
-arma::mat f_propagate_states(const arma::mat& P, int n_t) {
-  int n_states = P.n_rows;
-  arma::mat state_matrix(n_t + 1, n_states, arma::fill::zeros);
-  state_matrix(0, 0) = 1; // Initial state: all individuals in 'Gezond'
+arma::mat f_propagate_states(arma::mat a_TR, const arma::cube& a_P) {
+  int n_t = a_P.n_rows;    // Number of time steps (100)
+  int n_states = a_TR.n_cols; // Number of states (3)
   
-  // Propagate states over time
+  // Iterate through each time step
   for (int t = 0; t < n_t; ++t) {
-    state_matrix.row(t + 1) = state_matrix.row(t) * P;
+    // Extract the transition matrix for time step t (size 3x3)
+    arma::mat transition_matrix = a_P.tube(t, 0, t, n_states - 1);
+    // Perform matrix multiplication for the current time step
+    a_TR.row(t + 1) = a_TR.row(t) * transition_matrix;
   }
   
-  return state_matrix;
+  return a_TR;
 }

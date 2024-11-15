@@ -1,7 +1,7 @@
 #### Model calculations without df conversion for mapply ####
 
-f_model <- function(x) {
-  with(as.list(df_input[x,]), {
+f_model_b <- function(params) {
+  with(as.list(params), {
     
     ## set up transition probability matrix 
     # array with 4 dimensions (allowing transition matrix to depend on treatment and cycle)
