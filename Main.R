@@ -1,5 +1,5 @@
 #### Description: Simple probabilistic state-transition model ####
-#### Conventions: n = single number, v = vector, df = dataframe, m = matrix, a = array
+#### conventions: n = single number, v = vector, df = dataframe, m = matrix, a = array
 options(scipen = 999) # setting for scientific notation
 options(max.print = 10000) # setting for maximum output to display
 options(digits = 4) # setting number of digits to display
@@ -25,7 +25,7 @@ source("f_model_e.R")
 # load loop function in C++
 sourceCpp("f_propagate_states.cpp")
 
-#### General ####
+#### general ####
 v_states <- c("Gezond", "Ziek", "Dood") #  vector of model health states
 n_states <- length(v_states) # number of health states 
 v_treatments <- c("Current_practice", "New_treatment") # vector of strategy names
@@ -34,7 +34,7 @@ n_t <- 100 # model time horizon
 n_sim <- 5000 #00 # number of Monte-carlo simulations for probabilistic analyses
 set.seed(12345) # set seed
 
-#### Model inputs #### 
+#### model inputs #### 
 df_input <- data.frame( # open input parameter dataframe
   # transition probabilities 
   p_gezond_ziek = rbeta(n = n_sim, shape1 = 10, shape2 = 20), 
@@ -60,20 +60,25 @@ df_input <- data.frame( # open input parameter dataframe
 # f_model_d(df_input[1,])
 # f_model_e(df_input[1,])
 
-#### Create matrix to store results #### 
-m_out_1a <- m_out_2a <- m_out_3a <- m_out_4a <- 
-  m_out_1b <- m_out_2b <- m_out_3b <- m_out_4b <- 
-  m_out_1c <- m_out_2c <- m_out_3c <- m_out_4c <- 
-  m_out_1d <- m_out_2d <- m_out_3d <- m_out_4d <- 
-  m_out_1e <- m_out_2e <- m_out_3e <- m_out_4e <- 
-  matrix( 
-    data = NA, 
-    nrow = n_sim, 
-    ncol = 4,
-    dimnames = list(1:n_sim, c(paste0("Cost_", v_treatments), paste0("QALY_", v_treatments))) 
-  ) # end matrix
+#### create matrix to store results #### 
+matrix_names <- c(
+  "m_out_1a", "m_out_2a", "m_out_3a", "m_out_4a", 
+  "m_out_1b", "m_out_2b", "m_out_3b", "m_out_4b", 
+  "m_out_1c", "m_out_2c", "m_out_3c", "m_out_4c", 
+  "m_out_1d", "m_out_2d", "m_out_3d", "m_out_4d", 
+  "m_out_1e", "m_out_2e", "m_out_3e", "m_out_4e"
+)
 
-#### Evaluate model calculation approaches with microbenchmark() #### 
+for (name in matrix_names) {
+  assign(name, matrix(
+    data = NA,
+    nrow = n_sim,
+    ncol = 4,
+    dimnames = list(1:n_sim, c(paste0("Cost_", v_treatments), paste0("QALY_", v_treatments)))
+  ))
+}
+
+#### evaluate model calculation approaches with microbenchmark() #### 
 microbenchmark(
   approach1 = {
     # 1a 
@@ -240,23 +245,20 @@ microbenchmark(
   times = 5#0 # how often each approach should be evaluated
 )
 
-summary(m_out_1a == m_out_2a) 
-summary(m_out_2a == m_out_3a) 
-summary(m_out_3a == m_out_4a)
-summary(m_out_4a == m_out_1b) 
-summary(m_out_1b == m_out_2b)
-summary(m_out_2b == m_out_3b)
-summary(m_out_3b == m_out_4b)
-summary(m_out_4b == m_out_1c)
-summary(m_out_1c == m_out_2c)
-summary(m_out_2c == m_out_3c)
-summary(m_out_3c == m_out_4c)
-summary(m_out_4c == m_out_1d)
-summary(m_out_1d == m_out_2d)
-summary(m_out_2d == m_out_3d)
-summary(m_out_3d == t(m_out_4d))
-summary(t(m_out_4d) == m_out_1e)
-summary(m_out_1e == m_out_2e)
-summary(m_out_2e == m_out_3e)
-summary(m_out_3e == t(m_out_4e))
-summary(t(m_out_4e) == m_out_1a)
+# make list of matrices
+matrices <- list(m_out_1a, m_out_2a, m_out_3a, m_out_4a, 
+                 m_out_1b, m_out_2b, m_out_3b, m_out_4b, 
+                 m_out_1c, m_out_2c, m_out_3c, m_out_4c, 
+                 m_out_1d, m_out_2d, m_out_3d, m_out_4d, 
+                 m_out_1e, m_out_2e, m_out_3e, m_out_4e)
+
+# compare matrices pairwise
+results <- lapply(seq_along(matrices), function(i) {
+  if (i == length(matrices)) {
+    matrices[[i]] - matrices[[1]]  # Compare last with first
+  } else {
+    matrices[[i]] - matrices[[i + 1]]  # Compare with next
+  }
+})
+
+results
