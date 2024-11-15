@@ -12,14 +12,16 @@ f_model_e  <- function(params) {
   ) 
   
   # transitions from "Gezond"
-  a_P[1,, v_states[1],] <- cbind(rep(x = 1 - params$p_gezond_ziek - params$p_gezond_dood, times = n_t), # to "Gezond
-                                 rep(x = params$p_gezond_ziek, times = n_t), # to "Ziek"
-                                 rep(x = params$p_gezond_dood, times = n_t)) # to "Dood"
+  a_P[1,, v_states[1],] <- matrix(c(1 - params$p_gezond_ziek - params$p_gezond_dood, # to "Gezond
+                                    params$p_gezond_ziek, # to "Ziek"
+                                    params$p_gezond_dood), # to "Dood
+                                  nrow = n_t, ncol = n_states, byrow = TRUE)
   
   # transitions from "Ziek"
-  a_P[1,, v_states[2],] <- cbind(rep(x = params$p_ziek_gezond, times = n_t), # to "Gezond
-                                 rep(x = 1 - params$p_ziek_gezond - params$p_ziek_dood, times = n_t), # to "Ziek"
-                                 rep(x = params$p_ziek_dood, times = n_t)) # to "Dood"
+  a_P[1,, v_states[2],] <- matrix(c(params$p_ziek_gezond, # to "Gezond
+                                    1 - params$p_ziek_gezond - params$p_ziek_dood, # to "Ziek"
+                                    params$p_ziek_dood), # to "Dood
+                                  nrow = n_t, ncol = n_states, byrow = TRUE)
   
   # transitions from "Dood"
   a_P[1,, v_states[3], v_states[3]] <- 1 
@@ -28,11 +30,13 @@ f_model_e  <- function(params) {
   a_P[2,,,] <- a_P[1,,,] 
   
   # transitions from "Gezond" for new treatment
-  a_P[2,, v_states[1],] <-  cbind(rep(x = 1 - params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1 - params$p_gezond_dood, times = n_t), # to "Gezond
-                                  rep(x = params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1, times = n_t), # to "Ziek"
-                                  rep(x = params$p_gezond_dood, times = n_t)) # to "Dood"
+  a_P[2,, v_states[1],] <- matrix(c(1 - params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1 - params$p_gezond_dood, # to "Gezond
+                                    params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1, # to "Ziek"
+                                    params$p_gezond_dood), # to "Dood
+                                  nrow = n_t, ncol = n_states, byrow = TRUE)
   
   ## state-transition model 
+  # initialize array with 3 dimensions
   a_TR <- array( 
     data = NA, 
     dim = c(n_treatments, n_t + 1, n_states), 
@@ -40,6 +44,8 @@ f_model_e  <- function(params) {
   ) 
   
   a_TR[1, 1,] <- a_TR[2, 1,] <- c(1, 0, 0) # set "Gezond" as starting health state
+  
+  # vectorized state transition using matrix multiplication
   a_TR[1, , ] <- f_propagate_states(a_TR[1, , ], a_P[1, , , ]) # Propagate for treatment 1
   a_TR[2, , ] <- f_propagate_states(a_TR[2, , ], a_P[2, , , ]) # Propagate for treatment 2
   
@@ -50,43 +56,26 @@ f_model_e  <- function(params) {
   # } # close for loop for cycle
   
   ## calculate output
-  # define utility and cost matrices
   # create utility matrix
-  m_u <- matrix( 
-    data = cbind( 
-      rep(x = params$u_gezond, times = n_t + 1),
-      rep(x = params$u_ziek, times = n_t + 1),
-      rep(x = params$u_dood, times = n_t + 1)
-    ), 
-    nrow = n_t + 1, 
-    ncol = length(v_states)
-  ) # end matrix
+  m_u <- matrix(c(params$u_gezond, 
+                  params$u_ziek, 
+                  params$u_dood), 
+                nrow = n_t + 1, ncol = length(v_states), byrow = TRUE)
   
   # create cost matrix 
-  m_c <- matrix( 
-    data = cbind(
-      rep(x = params$c_gezond, times = n_t + 1),
-      rep(x = params$c_ziek, times = n_t + 1),
-      rep(x = params$c_dood, times = n_t + 1)
-    ), 
-    nrow = n_t + 1, 
-    ncol = length(v_states)
-  ) # end matrix
+  m_c <- matrix(c(params$c_gezond, 
+                  params$c_ziek, 
+                  params$c_dood), 
+                nrow = n_t + 1, ncol = length(v_states), byrow = TRUE)
   
-  ## estimate QALYs and costs with direct multiplication
-  # create results matrix
-  m_res <- matrix( 
-    data = cbind( 
-      rowSums(a_TR[1, , ] * m_u),
-      rowSums(a_TR[2, , ] * m_u),
-      rowSums(a_TR[1, , ] * m_c),
-      rowSums(a_TR[2, , ] * m_c)
-    ), 
-    nrow = n_t + 1, 
-    ncol = length(v_treatments) * 2
-  ) # end matrix
+  # estimate QALYs and costs with direct multiplication
+  m_res <- cbind(
+    rowSums(a_TR[1, , ] * m_u),  # QALYs for treatment 1
+    rowSums(a_TR[2, , ] * m_u),  # QALYs for treatment 2
+    rowSums(a_TR[1, , ] * m_c),  # Costs for treatment 1
+    rowSums(a_TR[2, , ] * m_c)   # Costs for treatment 2
+  )
   
   return(c(sum(m_res[,3]) , sum(m_res[,4]) , sum(m_res[,1]), sum(m_res[,2]))) # return model results
   
 } # end function
-
