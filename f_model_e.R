@@ -72,7 +72,7 @@ f_model_e  <- function(params) {
   m_res <- matrix(c(rowSums(a_TR[1, , ] * m_u),  # QALYs for treatment 1
                     rowSums(a_TR[2, , ] * m_u),  # QALYs for treatment 2
                     rowSums(a_TR[1, , ] * m_c),  # Costs for treatment 1
-                    rowSums(a_TR[2, , ] * m_c)),   # Costs for treatment 2
+                    rowSums(a_TR[2, , ] * m_c)), # Costs for treatment 2
                   ncol = 4, byrow = FALSE)
   
   return(c(sum(m_res[,3]) , sum(m_res[,4]) , sum(m_res[,1]), sum(m_res[,2]))) # return model results
