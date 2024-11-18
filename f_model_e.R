@@ -12,13 +12,13 @@ f_model_e  <- function(params) {
   ) 
   
   # vectorized assignment for transitions from "Gezond"
-  a_P[1,, v_states[1],] <- matrix(c(1 - params$p_gezond_ziek - params$p_gezond_dood, # to "Gezond
+  a_P[1,, v_states[1],] <- matrix(c(1 - params$p_gezond_ziek - params$p_gezond_dood, # to "Gezond"
                                     params$p_gezond_ziek, # to "Ziek"
                                     params$p_gezond_dood), # to "Dood
                                   nrow = n_t, ncol = n_states, byrow = TRUE)
   
   # vectorized assignment for transitions from "Ziek"
-  a_P[1,, v_states[2],] <- matrix(c(params$p_ziek_gezond, # to "Gezond
+  a_P[1,, v_states[2],] <- matrix(c(params$p_ziek_gezond, # to "Gezond"
                                     1 - params$p_ziek_gezond - params$p_ziek_dood, # to "Ziek"
                                     params$p_ziek_dood), # to "Dood
                                   nrow = n_t, ncol = n_states, byrow = TRUE)
@@ -30,7 +30,7 @@ f_model_e  <- function(params) {
   a_P[2,,,] <- a_P[1,,,] 
   
   # vectorized assignment for transitions from "Gezond" for new treatment
-  a_P[2,, v_states[1],] <- matrix(c(1 - params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1 - params$p_gezond_dood, # to "Gezond
+  a_P[2,, v_states[1],] <- matrix(c(1 - params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1 - params$p_gezond_dood, # to "Gezond"
                                     params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1, # to "Ziek"
                                     params$p_gezond_dood), # to "Dood
                                   nrow = n_t, ncol = n_states, byrow = TRUE)
