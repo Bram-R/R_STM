@@ -12,10 +12,10 @@ library(microbenchmark)  # to track time
 library(Rcpp)
 library(RcppArmadillo)
 
-# Clear workspace
+# clear workspace
 rm(list = ls()) # clear objects from workspace
 
-# Load functions from local scripts
+# load functions from local scripts
 source("f_model_a.R")
 source("f_model_b.R")
 source("f_model_c.R")

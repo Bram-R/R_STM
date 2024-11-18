@@ -10,13 +10,13 @@ f_model_d <- function(params) {
     dimnames = list(v_treatments, 1:n_t, v_states, v_states)  
   ) 
   
-  # transitions from "Gezond"
+  # vectorized assignment for transitions from "Gezond"
   a_P[1,, v_states[1],] <- matrix(c(1 - params$p_gezond_ziek - params$p_gezond_dood, # to "Gezond
                                     params$p_gezond_ziek, # to "Ziek"
                                     params$p_gezond_dood), # to "Dood
                                   nrow = n_t, ncol = n_states, byrow = TRUE)
   
-  # transitions from "Ziek"
+  # vectorized assignment for transitions from "Ziek"
   a_P[1,, v_states[2],] <- matrix(c(params$p_ziek_gezond, # to "Gezond
                                     1 - params$p_ziek_gezond - params$p_ziek_dood, # to "Ziek"
                                     params$p_ziek_dood), # to "Dood
@@ -28,7 +28,7 @@ f_model_d <- function(params) {
   # copy transition matrix for new treatment
   a_P[2,,,] <- a_P[1,,,] 
   
-  # transitions from "Gezond" for new treatment
+  # vectorized assignment for transitions from "Gezond" for new treatment
   a_P[2,, v_states[1],] <- matrix(c(1 - params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1 - params$p_gezond_dood, # to "Gezond
                                     params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1, # to "Ziek"
                                     params$p_gezond_dood), # to "Dood
@@ -64,12 +64,11 @@ f_model_d <- function(params) {
                 nrow = n_t + 1, ncol = length(v_states), byrow = TRUE)
   
   # estimate QALYs and costs with direct multiplication
-  m_res <- cbind(
-    rowSums(a_TR[1, , ] * m_u),  # QALYs for treatment 1
-    rowSums(a_TR[2, , ] * m_u),  # QALYs for treatment 2
-    rowSums(a_TR[1, , ] * m_c),  # Costs for treatment 1
-    rowSums(a_TR[2, , ] * m_c)   # Costs for treatment 2
-  )
+  m_res <- matrix(c(rowSums(a_TR[1, , ] * m_u),  # QALYs for treatment 1
+                    rowSums(a_TR[2, , ] * m_u),  # QALYs for treatment 2
+                    rowSums(a_TR[1, , ] * m_c),  # Costs for treatment 1
+                    rowSums(a_TR[2, , ] * m_c)),   # Costs for treatment 2
+                  ncol = 4, byrow = FALSE)
   
   return(c(sum(m_res[,3]) , sum(m_res[,4]) , sum(m_res[,1]), sum(m_res[,2]))) # return model results
   
