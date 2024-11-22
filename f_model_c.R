@@ -1,4 +1,20 @@
 #### Model calculations without df conversion for mapply ####
+#' @title State-Transition Model (without df conversion for mapply) 
+#' @description Calculates state transitions, QALYs, and costs
+#' @param params A data frame containing the following parameters:
+#'   \itemize{
+#'     \item \code{p_gezond_ziek}: Transition probability from "Gezond" to "Ziek".
+#'     \item \code{p_gezond_dood}: Transition probability from "Gezond" to "Dood".
+#'     \item \code{p_ziek_gezond}: Transition probability from "Ziek" to "Gezond".
+#'     \item \code{p_ziek_dood}: Transition probability from "Ziek" to "Dood".
+#'     \item \code{rr_gezond_ziek_t2_t1}: Relative risk for new treatment.
+#'     \item \code{u_gezond}, \code{u_ziek}, \code{u_dood}: Utilities for each health state.
+#'     \item \code{c_gezond}, \code{c_ziek}, \code{c_dood}: Costs for each health state.
+#'   }
+#' @return A numeric vector with the total costs and QALYs for each treatment: 
+#'   \code{c(cost_t1, cost_t2, QALY_t1, QALY_t2)}.
+#' @examples
+#' f_model_c(df_input[1, ])
 
 f_model_c <- function(params) {
   
