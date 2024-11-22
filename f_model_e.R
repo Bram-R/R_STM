@@ -38,7 +38,7 @@ f_model_e <- function(params) {
     params$p_ziek_dood                                # Transition to "Dood"
   ), nrow = n_t, ncol = n_states, byrow = TRUE)
   
-  a_P[1,, v_states[3], v_states[3]] <- 1              # Stay in "Dood"
+  a_P[1,, v_states[3], v_states[3]] <- 1              # "Dood" is absorbing
   
   # Transition probabilities for treatment 2
   a_P[2,,,] <- a_P[1,,,]
@@ -59,13 +59,13 @@ f_model_e <- function(params) {
   # State transition using a Rcpp function
   a_TR[1, , ] <- f_propagate_states(a_TR[1, , ], a_P[1, , , ])
   a_TR[2, , ] <- f_propagate_states(a_TR[2, , ], a_P[2, , , ])
-
+  
   # the f_propagate_states() calculations (in C++) are identical to
-  # vectorized state transition using matrix multiplication
-  # for (t in 1:n_t){ # loop through the number of cycles
-  #   a_TR[1, t + 1, ] <- a_TR[1, t, ] %*% a_P[1, t, , ] # estimate next cycle (t + 1) of Markov trace for t1
-  #   a_TR[2, t + 1, ] <- a_TR[2, t, ] %*% a_P[2, t, , ] # estimate next cycle (t + 1) of Markov trace for t2
-  # } # close for loop for cycles
+  # State transitions using a loop
+  # for (t in 1:n_t) {
+  #   a_TR[1, t + 1, ] <- a_TR[1, t, ] %*% a_P[1, t, , ]  # Treatment 1
+  #   a_TR[2, t + 1, ] <- a_TR[2, t, ] %*% a_P[2, t, , ]  # Treatment 2
+  # }
   
   # Utility and cost matrices
   m_u <- matrix(c(params$u_gezond, # Utility for "Gezond"

@@ -36,9 +36,9 @@ f_model_d <- function(params) {
     params$p_ziek_dood                                # Transition to "Dood"
   ), nrow = n_t, ncol = n_states, byrow = TRUE)
   
-  a_P[1,, v_states[3], v_states[3]] <- 1              # Stay in "Dood"
+  a_P[1,, v_states[3], v_states[3]] <- 1              # "Dood" is absorbing
   
-  # Transition probabilities for treatment 2
+  # Transition probabilities for treatment 2 (copy from treatment 1, adjust for relative risk)
   a_P[2,,,] <- a_P[1,,,]
   a_P[2,, v_states[1], ] <- matrix(c(
     1 - params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1 - params$p_gezond_dood, # Stay in "Gezond"

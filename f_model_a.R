@@ -10,58 +10,57 @@
 #'     \item \code{u_gezond}, \code{u_ziek}, \code{u_dood}: Utilities for each health state.
 #'     \item \code{c_gezond}, \code{c_ziek}, \code{c_dood}: Costs for each health state.
 #'   }
-#' @return A numeric vector with the total costs and QALYs for each treatment: 
+#' @return A numeric vector with the total costs and QALYs for each treatment:
 #'   \code{c(cost_t1, cost_t2, QALY_t1, QALY_t2)}.
 #' @examples
-#' f_model_b(df_input[1, ])
+#' f_model_a(df_input[1, ])
 f_model_a <- function(params) {
+  
   with(as.list(params), {
     
-    ## set up transition probability matrix 
-    # array with 4 dimensions (allowing transition matrix to depend on treatment and cycle)
-    a_P <- array( 
+    # Initialize transition probability matrices
+    a_P <- array(
       data = 0,
-      dim = c(n_treatments, n_t, n_states, n_states), 
-      dimnames = list(v_treatments, 1:n_t, v_states, v_states)  
-    ) 
+      dim = c(n_treatments, n_t, n_states, n_states),
+      dimnames = list(v_treatments, 1:n_t, v_states, v_states)
+    )
     
-    # transitions from "Gezond"
+    # Transition probabilities for treatment 1
+    # Transitions from "Gezond"
     a_P[1,, v_states[1], v_states[2]] <- p_gezond_ziek
     a_P[1,, v_states[1], v_states[3]] <- p_gezond_dood
     a_P[1,, v_states[1], v_states[1]] <- 1 - p_gezond_ziek - p_gezond_dood
     
-    # transitions from "Ziek"
+    # Transitions from "Ziek"
     a_P[1,, v_states[2], v_states[1]] <- p_ziek_gezond
     a_P[1,, v_states[2], v_states[3]] <- p_ziek_dood
     a_P[1,, v_states[2], v_states[2]] <- 1 - p_ziek_gezond - p_ziek_dood
     
-    # transitions from "Dood"
-    a_P[1,, v_states[3], v_states[3]] <- 1 
+    # Transitions from "Dood"
+    a_P[1,, v_states[3], v_states[3]] <- 1  # "Dood" is absorbing
     
-    # copy transition matrix for new treatment
-    a_P[2,,,] <- a_P[1,,,] 
-    
-    # transitions from "Gezond" for new treatment
+    # Transition probabilities for treatment 2 (copy from treatment 1, adjust for relative risk)
+    # Transitions from "Gezond"
+    a_P[2,,,] <- a_P[1,,,]
     a_P[2,, v_states[1], v_states[2]] <- p_gezond_ziek * rr_gezond_ziek_t2_t1
     a_P[2,, v_states[1], v_states[3]] <- p_gezond_dood
     a_P[2,, v_states[1], v_states[1]] <- 1 - (p_gezond_ziek * rr_gezond_ziek_t2_t1) - p_gezond_dood
     
-    ## state-transition model 
-    a_TR <- array( 
-      data = NA, 
-      dim = c(n_treatments, n_t + 1, n_states), 
-      dimnames = list(v_treatments, 0:n_t, v_states) 
-    ) 
+    # Initialize Markov trace
+    a_TR <- array(
+      data = NA,
+      dim = c(n_treatments, n_t + 1, n_states),
+      dimnames = list(v_treatments, 0:n_t, v_states)
+    )
+    a_TR[1, 1,] <- a_TR[2, 1,] <- c(1, 0, 0)  # Starting state: "Gezond"
     
-    a_TR[1, 1,] <- a_TR[2, 1,] <- c(1, 0, 0) # set "Gezond" as starting health state
+    # State transitions using nested loops
+    for (i_treatment in 1:n_treatments) {
+      for (t in 1:n_t) {
+        a_TR[i_treatment, t + 1, ] <- a_TR[i_treatment, t, ] %*% a_P[i_treatment, t, , ]
+      }
+    }
     
-    for (i_treatment in 1:n_treatments){ # loop through the treatment options
-      for (t in 1:n_t){ # loop through the number of cycles
-        a_TR[i_treatment, t + 1, ] <- a_TR[i_treatment, t, ] %*% a_P[i_treatment, t, , ] # estimate next cycle (t + 1) of Markov trace 
-      } # close for loop for cycles
-    } # close for loop for treatments
-    
-    ## calculate output
     # create utility matrix
     m_u <- matrix( 
       data = NA, 
@@ -70,9 +69,9 @@ f_model_a <- function(params) {
     ) # end matrix
     
     m_u <- cbind( 
-      rep(x = u_gezond, times = n_t + 1),
-      rep(x = u_ziek, times = n_t + 1),
-      rep(x = u_dood, times = n_t + 1)
+      rep(x = u_gezond, times = n_t + 1), # Utility for "Gezond"
+      rep(x = u_ziek, times = n_t + 1),   # Utility for "Ziek"
+      rep(x = u_dood, times = n_t + 1)    # Utility for "Dood"
     )
     
     # create cost matrix 
@@ -83,18 +82,19 @@ f_model_a <- function(params) {
     ) # end matrix
     
     m_c <- cbind(
-      rep(x = c_gezond, times = n_t + 1),
-      rep(x = c_ziek, times = n_t + 1),
-      rep(x = c_dood, times = n_t + 1)
+      rep(x = c_gezond, times = n_t + 1), # Costs for "Gezond"
+      rep(x = c_ziek, times = n_t + 1),   # Costs for "Ziek"
+      rep(x = c_dood, times = n_t + 1)    # Costs for "Dood"
     )
     
-    # estimate QALYs and costs
-    v_E_t1 <- mapply(FUN = '%*%', as.data.frame(t(a_TR[1, , ])), as.data.frame(t(m_u)))
-    v_E_t2 <- mapply(FUN = '%*%', as.data.frame(t(a_TR[2, , ])), as.data.frame(t(m_u)))
-    v_C_t1 <- mapply(FUN = '%*%', as.data.frame(t(a_TR[1, , ])), as.data.frame(t(m_c)))
-    v_C_t2 <- mapply(FUN = '%*%', as.data.frame(t(a_TR[2, , ])), as.data.frame(t(m_c)))
+    # Estimate QALYs and costs
+    v_E_t1 <- mapply(FUN = '%*%', as.data.frame(t(a_TR[1, , ])), as.data.frame(t(m_u))) # QALYs for treatment 1
+    v_E_t2 <- mapply(FUN = '%*%', as.data.frame(t(a_TR[2, , ])), as.data.frame(t(m_u))) # QALYs for treatment 2
+    v_C_t1 <- mapply(FUN = '%*%', as.data.frame(t(a_TR[1, , ])), as.data.frame(t(m_c))) # Costs for treatment 1
+    v_C_t2 <- mapply(FUN = '%*%', as.data.frame(t(a_TR[2, , ])), as.data.frame(t(m_c))) # Costs for treatment 2
     
-    return(c(sum(v_C_t1) , sum(v_C_t2) , sum(v_E_t1), sum(v_E_t2))) # return model results
+    # Return aggregated results
+    return(c(sum(v_C_t1), sum(v_C_t2), sum(v_E_t1), sum(v_E_t2)))
     
-  }) # end with function  
-} # end function
+  })
+}

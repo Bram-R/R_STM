@@ -54,6 +54,12 @@ df_input <- data.frame(
   c_dood = rep(0, n_sim)
 )
 
+# f_model_a(df_input[1, ])
+# f_model_b(df_input[1, ])
+# f_model_c(as.matrix(df_input[1, ]))
+# f_model_d(df_input[1, ])
+# f_model_e(df_input[1, ])
+
 #### Create Matrices for Results ####
 # Use a list to store result matrices
 result_matrices <- setNames(vector("list", 20), paste0("m_out_", 1:20))
@@ -148,25 +154,25 @@ microbenchmark(
   
   approach16 = {  # Future multisession: f_model_a
     plan(multisession)
-    result_matrices[[16]] <- t(future_sapply(1:n_sim, function(x) f_model_a(df_input[x, ])))
+    result_matrices[[16]] <- t(future_sapply(1:n_sim, function(x) f_model_a(df_input[x, ]), future.seed = TRUE))
     plan(sequential)
   },
   
   approach17 = {  # Future multisession: f_model_b
     plan(multisession)
-    result_matrices[[17]] <- t(future_sapply(1:n_sim, function(x) f_model_b(df_input[x, ])))
+    result_matrices[[17]] <- t(future_sapply(1:n_sim, function(x) f_model_b(df_input[x, ]), future.seed = TRUE))
     plan(sequential)
   },
   
   approach18 = {  # Future multisession: f_model_c
     plan(multisession)
-    result_matrices[[18]] <- t(future_sapply(1:n_sim, function(x) f_model_c(as.matrix(df_input[x, ]))))
+    result_matrices[[18]] <- t(future_sapply(1:n_sim, function(x) f_model_c(as.matrix(df_input[x, ])), future.seed = TRUE))
     plan(sequential)
   },
   
   approach19 = {  # Future multisession: f_model_d
     plan(multisession)
-    result_matrices[[19]] <- t(future_sapply(1:n_sim, function(x) f_model_d(df_input[x, ])))
+    result_matrices[[19]] <- t(future_sapply(1:n_sim, function(x) f_model_d(df_input[x, ]), future.seed = TRUE))
     plan(sequential)
   },
   
@@ -175,11 +181,10 @@ microbenchmark(
     result_matrices[[20]] <- t(future_sapply(1:n_sim, function(x) {
       Rcpp::sourceCpp("f_propagate_states.cpp")
       f_model_e(df_input[x, ])
-    }))
+    }, future.seed = TRUE))
     plan(sequential)
   },
-  
-  times = 50
+  times = 20
 )
 
 #### Compare Matrices ####
@@ -192,4 +197,8 @@ comparison_results <- lapply(seq_along(result_matrices), function(i) {
   }
 })
 
-comparison_results
+# Apply summary to all matrices in comparison_results
+summaries <- lapply(comparison_results, summary)
+
+# View all summaries at once (prints each one sequentially)
+summaries
