@@ -93,7 +93,7 @@ f_model_a <- function(params) {
     v_C_t1 <- mapply(FUN = '%*%', as.data.frame(t(a_TR[1, , ])), as.data.frame(t(m_c))) # Costs for treatment 1
     v_C_t2 <- mapply(FUN = '%*%', as.data.frame(t(a_TR[2, , ])), as.data.frame(t(m_c))) # Costs for treatment 2
     
-    # Return aggregated results
+    # Return summed results
     return(c(sum(v_C_t1), sum(v_C_t2), sum(v_E_t1), sum(v_E_t2)))
     
   })

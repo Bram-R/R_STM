@@ -10,8 +10,7 @@
 #'     \item \code{u_gezond}, \code{u_ziek}, \code{u_dood}: Utilities for each health state.
 #'     \item \code{c_gezond}, \code{c_ziek}, \code{c_dood}: Costs for each health state.
 #'   }
-#' @return A numeric vector with the total costs and QALYs for each treatment: 
-#'   \code{c(cost_t1, cost_t2, QALY_t1, QALY_t2)}.
+#' @return A numeric vector with the total costs and QALYs for each treatment.
 #' @examples
 #' f_model_d(df_input[1, ])
 f_model_d <- function(params) {
@@ -71,13 +70,9 @@ f_model_d <- function(params) {
                 nrow = n_t + 1, ncol = n_states, byrow = TRUE)
   
   # Calculate QALYs and costs
-  m_res <- matrix(c(
-    rowSums(a_TR[1, , ] * m_u),  # QALYs for treatment 1
-    rowSums(a_TR[2, , ] * m_u),  # QALYs for treatment 2
-    rowSums(a_TR[1, , ] * m_c),  # Costs for treatment 1
-    rowSums(a_TR[2, , ] * m_c)   # Costs for treatment 2
-  ), ncol = 4, byrow = FALSE)
+  v_qalys <- rowSums(a_TR[, , ]  * rep(m_u, each = n_treatments))
+  v_costs <- rowSums(a_TR[, , ]  * rep(m_c, each = n_treatments))
   
-  # Return aggregated results
-  return(c(sum(m_res[, 3]), sum(m_res[, 4]), sum(m_res[, 1]), sum(m_res[, 2])))
+  # Return  results
+  return(c(v_costs, v_qalys))
 }
