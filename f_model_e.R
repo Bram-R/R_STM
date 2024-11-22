@@ -56,11 +56,16 @@ f_model_e <- function(params) {
   )
   a_TR[1, 1,] <- a_TR[2, 1,] <- c(1, 0, 0)  # Starting state: "Gezond"
   
-  # Propagate states using Rcpp
+  # State transition using a Rcpp function
   a_TR[1, , ] <- f_propagate_states(a_TR[1, , ], a_P[1, , , ])
   a_TR[2, , ] <- f_propagate_states(a_TR[2, , ], a_P[2, , , ])
 
   # the f_propagate_states() calculations (in C++) are identical to
+  # vectorized state transition using matrix multiplication
+  # for (t in 1:n_t){ # loop through the number of cycles
+  #   a_TR[1, t + 1, ] <- a_TR[1, t, ] %*% a_P[1, t, , ] # estimate next cycle (t + 1) of Markov trace for t1
+  #   a_TR[2, t + 1, ] <- a_TR[2, t, ] %*% a_P[2, t, , ] # estimate next cycle (t + 1) of Markov trace for t2
+  # } # close for loop for cycles
   
   # Utility and cost matrices
   m_u <- matrix(c(params$u_gezond, params$u_ziek, params$u_dood),
