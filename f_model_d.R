@@ -36,14 +36,14 @@ f_model_d <- function(params) {
     params$p_ziek_dood                                # Transition to "Dood"
   ), nrow = n_t, ncol = n_states, byrow = TRUE)
   
-  a_P[1,, v_states[3], v_states[3]] <- 1              # Remain in "Dood"
+  a_P[1,, v_states[3], v_states[3]] <- 1              # Stay in "Dood"
   
   # Transition probabilities for treatment 2
   a_P[2,,,] <- a_P[1,,,]
   a_P[2,, v_states[1], ] <- matrix(c(
-    1 - params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1 - params$p_gezond_dood,
-    params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1,
-    params$p_gezond_dood
+    1 - params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1 - params$p_gezond_dood, # Stay in "Gezond"
+    params$p_gezond_ziek * params$rr_gezond_ziek_t2_t1,                            # Transition to "Ziek"
+    params$p_gezond_dood                                                           # Transition to "Dood"
   ), nrow = n_t, ncol = n_states, byrow = TRUE)
   
   # Initialize Markov trace
@@ -61,9 +61,13 @@ f_model_d <- function(params) {
   }
   
   # Utility and cost matrices
-  m_u <- matrix(c(params$u_gezond, params$u_ziek, params$u_dood),
+  m_u <- matrix(c(params$u_gezond, # Utility for "Gezond"
+                  params$u_ziek,   # Utility for "Ziek"
+                  params$u_dood),  # Utility for "Dood"
                 nrow = n_t + 1, ncol = n_states, byrow = TRUE)
-  m_c <- matrix(c(params$c_gezond, params$c_ziek, params$c_dood),
+  m_c <- matrix(c(params$c_gezond, # Costs for "Gezond"
+                  params$c_ziek,   # Costs for "Ziek"
+                  params$c_dood),  # Costs for "Dood"
                 nrow = n_t + 1, ncol = n_states, byrow = TRUE)
   
   # Calculate QALYs and costs
