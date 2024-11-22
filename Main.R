@@ -1,264 +1,195 @@
-#### Description: Simple probabilistic state-transition model ####
-#### conventions: n = single number, v = vector, df = dataframe, m = matrix, a = array
-options(scipen = 999) # setting for scientific notation
-options(max.print = 10000) # setting for maximum output to display
-options(digits = 4) # setting number of digits to display
+#### Description: Simple Probabilistic State-Transition Model ####
+#### Conventions: n = single number, v = vector, df = dataframe, m = matrix, a = array ####
 
-library(parallel)
-library(future.apply)
-library(microbenchmark)  # to track time
+# General settings
+options(scipen = 999, max.print = 10000, digits = 4)
 
-# C++ code requires Rtools 
-library(Rcpp)
-library(RcppArmadillo)
+# Load and install necessary libraries
+required_packages <- c(
+  "parallel", "future.apply", "microbenchmark", "Rcpp", "RcppArmadillo"
+)
+new_packages <- required_packages[!(required_packages %in% installed.packages()[, "Package"])]
+if (length(new_packages)) install.packages(new_packages)
+suppressPackageStartupMessages(lapply(required_packages, require, character.only = TRUE
 
-# clear workspace
-rm(list = ls()) # clear objects from workspace
+# Clear workspace
+rm(list = ls())
 
-# load functions from local scripts
+# Load custom functions
 source("f_model_a.R")
 source("f_model_b.R")
 source("f_model_c.R")
 source("f_model_d.R")
 source("f_model_e.R")
 
-# load loop function in C++
+# Load Rcpp function for state propagation
 sourceCpp("f_propagate_states.cpp")
 
-#### general ####
-v_states <- c("Gezond", "Ziek", "Dood") #  vector of model health states
-n_states <- length(v_states) # number of health states 
-v_treatments <- c("Current_practice", "New_treatment") # vector of strategy names
-n_treatments <- length(v_treatments)  # number of treatments
-n_t <- 100 # model time horizon 
-n_sim <- 5000 #00 # number of Monte-carlo simulations for probabilistic analyses
-set.seed(12345) # set seed
+#### General Setup ####
+v_states <- c("Gezond", "Ziek", "Dood")  # Vector of model health states
+n_states <- length(v_states)  # Number of health states
+v_treatments <- c("Current_practice", "New_treatment")  # Strategy names
+n_treatments <- length(v_treatments)  # Number of treatments
+n_t <- 100  # Model time horizon
+n_sim <- 5000  # Number of Monte Carlo simulations
+set.seed(12345)  # Set random seed
 
-#### model inputs #### 
-df_input <- data.frame( # open input parameter dataframe
-  # transition probabilities 
-  p_gezond_ziek = rbeta(n = n_sim, shape1 = 10, shape2 = 20), 
-  p_gezond_dood = rbeta(n = n_sim, shape1 = 1, shape2 = 20), 
-  p_ziek_gezond = rbeta(n = n_sim, shape1 = 5, shape2 = 20), 
+#### Model Inputs ####
+# Create a dataframe for probabilistic sensitivity analysis (PSA) inputs
+df_input <- data.frame(
+  # Transition probabilities
+  p_gezond_ziek = rbeta(n = n_sim, shape1 = 10, shape2 = 20),
+  p_gezond_dood = rbeta(n = n_sim, shape1 = 1, shape2 = 20),
+  p_ziek_gezond = rbeta(n = n_sim, shape1 = 5, shape2 = 20),
   p_ziek_dood = rbeta(n = n_sim, shape1 = 10, shape2 = 20),
-  # relative risk (difference between treatments)
+  # Relative risk for new treatment
   rr_gezond_ziek_t2_t1 = rlnorm(n = n_sim, meanlog = log(0.8), sdlog = 0.2),
-  # health state utility (quality of life)
-  u_gezond = rbeta(n = n_sim, shape1 = 75, shape2 = 100), 
-  u_ziek = rbeta(n = n_sim, shape1 = 60, shape2 = 100), 
-  u_dood = rep(x = 0, times = n_sim),
-  # health state costs
-  c_gezond = rgamma(n = n_sim, shape = 75, scale = 100), 
-  c_ziek = rgamma(n = n_sim, shape = 100, scale = 100), 
-  c_dood = rep(x = 0, times = n_sim)
-) # close input parameter dataframe
-
-# validation
-# f_model_a(df_input[1,])
-# f_model_b(df_input[1,])
-# f_model_c(as.matrix(df_input[1,]))
-# f_model_d(df_input[1,])
-# f_model_e(df_input[1,])
-
-#### create matrix to store results #### 
-matrix_names <- c(
-  "m_out_1a", "m_out_2a", "m_out_3a", "m_out_4a", 
-  "m_out_1b", "m_out_2b", "m_out_3b", "m_out_4b", 
-  "m_out_1c", "m_out_2c", "m_out_3c", "m_out_4c", 
-  "m_out_1d", "m_out_2d", "m_out_3d", "m_out_4d", 
-  "m_out_1e", "m_out_2e", "m_out_3e", "m_out_4e"
+  # Utilities
+  u_gezond = rbeta(n = n_sim, shape1 = 75, shape2 = 100),
+  u_ziek = rbeta(n = n_sim, shape1 = 60, shape2 = 100),
+  u_dood = rep(0, n_sim),
+  # Costs
+  c_gezond = rgamma(n = n_sim, shape = 75, scale = 100),
+  c_ziek = rgamma(n = n_sim, shape = 100, scale = 100),
+  c_dood = rep(0, n_sim)
 )
 
-for (name in matrix_names) {
-  assign(name, matrix(
+#### Create Matrices for Results ####
+# Use a list to store result matrices
+result_matrices <- setNames(vector("list", 20), paste0("m_out_", 1:20))
+
+# Initialize each matrix in the list
+for (i in seq_along(result_matrices)) {
+  result_matrices[[i]] <- matrix(
     data = NA,
     nrow = n_sim,
     ncol = 4,
     dimnames = list(1:n_sim, c(paste0("Cost_", v_treatments), paste0("QALY_", v_treatments)))
-  ))
+  )
 }
 
-#### evaluate model calculation approaches with microbenchmark() #### 
+#### Evaluate Model Calculation Approaches ####
 microbenchmark(
-  approach1 = {
-    # 1a 
-    for(x in 1:n_sim){ # loop to run model for each row of PSA inputs
-      m_out_1a[x, ] <- f_model_a(df_input[x,])
-    } # close for loop
+  approach1 = {  # Sequential loop: f_model_a
+    for (x in 1:n_sim) result_matrices[[1]][x, ] <- f_model_a(df_input[x, ])
   },
   
-  approach2 = {
-    # 1b 
-    for(x in 1:n_sim){ # loop to run model for each row of PSA inputs
-      m_out_1b[x, ] <- f_model_b(df_input[x,])
-    } # close for loop
+  approach2 = {  # Sequential loop: f_model_b
+    for (x in 1:n_sim) result_matrices[[2]][x, ] <- f_model_b(df_input[x, ])
   },
   
-  approach3 = {
-    # 1c 
-    for(x in 1:n_sim){ # loop to run model for each row of PSA inputs
-      m_out_1c[x,] <- f_model_c(as.matrix(df_input[x,]))
-    } # close for loop
+  approach3 = {  # Sequential loop: f_model_c
+    for (x in 1:n_sim) result_matrices[[3]][x, ] <- f_model_c(as.matrix(df_input[x, ]))
   },
   
-  approach4 = {
-    # 1d 
-    for(x in 1:n_sim){ # loop to run model for each row of PSA inputs
-      m_out_1d[x, ] <- f_model_d(df_input[x,])
-    } # close for loop
+  approach4 = {  # Sequential loop: f_model_d
+    for (x in 1:n_sim) result_matrices[[4]][x, ] <- f_model_d(df_input[x, ])
   },
   
-  approach5 = {
-    # 1e 
-    for(x in 1:n_sim){ # loop to run model for each row of PSA inputs
-      m_out_1e[x, ] <- f_model_e(df_input[x,])
-    } # close for loop
+  approach5 = {  # Sequential loop: f_model_e
+    for (x in 1:n_sim) result_matrices[[5]][x, ] <- f_model_e(df_input[x, ])
   },
   
-  approach6 = {
-    # 2a 
-    m_out_2a <- t(apply(X = matrix(seq_len(nrow(df_input))), MARGIN = 1, function(x) {
-      f_model_a(df_input[x,])
-    }))
+  approach6 = {  # Apply-based approach: f_model_a
+    result_matrices[[6]] <- t(apply(matrix(seq_len(nrow(df_input))), 1, function(x) f_model_a(df_input[x, ])))
   },
   
-  approach7 = {
-    # 2b 
-    m_out_2b <- t(apply(X = matrix(seq_len(nrow(df_input))), MARGIN = 1, function(x) {
-      f_model_b(df_input[x,])
-    }))
+  approach7 = {  # Apply-based approach: f_model_b
+    result_matrices[[7]] <- t(apply(matrix(seq_len(nrow(df_input))), 1, function(x) f_model_b(df_input[x, ])))
   },
   
-  approach8 = {
-    # 2c 
-    m_out_2c <- t(apply(X = matrix(seq_len(nrow(df_input))), MARGIN = 1, function(x) {
-      f_model_c(as.matrix(df_input[x,]))
-    }))
+  approach8 = {  # Apply-based approach: f_model_c
+    result_matrices[[8]] <- t(apply(matrix(seq_len(nrow(df_input))), 1, function(x) f_model_c(as.matrix(df_input[x, ]))))
   },
   
-  approach9 = {
-    # 2d
-    m_out_2d <- t(apply(X = matrix(seq_len(nrow(df_input))), MARGIN = 1, function(x) {
-      f_model_d(df_input[x,])
-    }))
+  approach9 = {  # Apply-based approach: f_model_d
+    result_matrices[[9]] <- t(apply(matrix(seq_len(nrow(df_input))), 1, function(x) f_model_d(df_input[x, ])))
   },
   
-  approach10 = {
-    # 2e
-    m_out_2e <- t(apply(X = matrix(seq_len(nrow(df_input))), MARGIN = 1, function(x) {
-      f_model_e(df_input[x,])
-    }))
+  approach10 = {  # Apply-based approach: f_model_e
+    result_matrices[[10]] <- t(apply(matrix(seq_len(nrow(df_input))), 1, function(x) f_model_e(df_input[x, ])))
   },
   
-  approach11 = {
-    # 3a 
-    cl <- makeCluster(detectCores()) # Create a cluster with the number of cores available in your machine
-    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_a")) # Export necessary variables to the cluster
-    m_out_3a <- parLapply(cl, 1:n_sim, function(x) f_model_a(df_input[x, ]))
-    m_out_3a <- do.call(rbind, m_out_3a) # combine list into a matrix
+  approach11 = {  # Parallel: f_model_a
+    cl <- makeCluster(detectCores())
+    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_a"))
+    result_matrices[[11]] <- do.call(rbind, parLapply(cl, 1:n_sim, function(x) f_model_a(df_input[x, ])))
     stopCluster(cl)
   },
   
-  approach12 = {
-    # 3b 
-    cl <- makeCluster(detectCores()) # Create a cluster with the number of cores available in your machine
-    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_b")) # Export necessary variables to the cluster
-    m_out_3b <- parLapply(cl, 1:n_sim, function(x) f_model_b(df_input[x, ]))
-    m_out_3b <- do.call(rbind, m_out_3b) # combine list into a matrix
+  approach12 = {  # Parallel: f_model_b
+    cl <- makeCluster(detectCores())
+    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_b"))
+    result_matrices[[12]] <- do.call(rbind, parLapply(cl, 1:n_sim, function(x) f_model_b(df_input[x, ])))
     stopCluster(cl)
   },
   
-  approach13 = {
-    # 3c 
-    cl <- makeCluster(detectCores()) # Create a cluster with the number of cores available in your machine
-    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_c")) # Export necessary variables to the cluster
-    m_out_3c <- parLapply(cl, 1:n_sim, function(x) f_model_c(as.numeric(df_input[x, ])))
-    m_out_3c <- do.call(rbind, m_out_3c) # combine list into a matrix
+  approach13 = {  # Parallel: f_model_c
+    cl <- makeCluster(detectCores())
+    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_c"))
+    result_matrices[[13]] <- do.call(rbind, parLapply(cl, 1:n_sim, function(x) f_model_c(as.matrix(df_input[x, ]))))
     stopCluster(cl)
   },
   
-  approach14 = {
-    # 3d 
-    cl <- makeCluster(detectCores()) # Create a cluster with the number of cores available in your machine
-    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_d")) # Export necessary variables to the cluster
-    m_out_3d <- parLapply(cl, 1:n_sim, function(x) f_model_d(df_input[x, ]))
-    m_out_3d <- do.call(rbind, m_out_3d) # combine list into a matrix
+  approach14 = {  # Parallel: f_model_d
+    cl <- makeCluster(detectCores())
+    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_d"))
+    result_matrices[[14]] <- do.call(rbind, parLapply(cl, 1:n_sim, function(x) f_model_d(df_input[x, ])))
     stopCluster(cl)
   },
   
-  approach15 = {
-    # 3e
-    cl <- makeCluster(detectCores()) # Create a cluster with the number of cores available in your machine
-    clusterEvalQ(cl, {Rcpp::sourceCpp("f_propagate_states.cpp")})  # Rcpp functions compiled using sourceCpp() are available in the main R session but are not automatically exported to parallel workers, which typically start as separate R processes. Hence it requires explicit loading in workers (or compiling a package)
-    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_e")) # Export necessary variables to the cluster
-    m_out_3e <- parLapply(cl, 1:n_sim, function(x) f_model_e(df_input[x, ]))
-    m_out_3e <- do.call(rbind, m_out_3e) # combine list into a matrix
+  approach15 = {  # Parallel: f_model_e
+    cl <- makeCluster(detectCores())
+    clusterEvalQ(cl, Rcpp::sourceCpp("f_propagate_states.cpp"))
+    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_e"))
+    result_matrices[[15]] <- do.call(rbind, parLapply(cl, 1:n_sim, function(x) f_model_e(df_input[x, ])))
     stopCluster(cl)
   },
   
-  approach16 = {
-    # 4a 
-    plan(multisession) ## Run in parallel on local computer
-    m_out_4a <- t(future_apply(X = matrix(seq_len(nrow(df_input))), MARGIN = 1, function(x) {
-      f_model_a(df_input[x,])
-    }))
-    plan(sequential) # Stop running in parallel on local computer
+  approach16 = {  # Future multisession: f_model_a
+    plan(multisession)
+    result_matrices[[16]] <- t(future_sapply(1:n_sim, function(x) f_model_a(df_input[x, ])))
+    plan(sequential)
   },
   
-  approach17 = {
-    # 4b 
-    plan(multisession) ## Run in parallel on local computer
-    m_out_4b <- t(future_apply(X = matrix(seq_len(nrow(df_input))), MARGIN = 1, function(x) {
-      f_model_b(df_input[x,])
-    }))
-    plan(sequential) # Stop running in parallel on local computer
+  approach17 = {  # Future multisession: f_model_b
+    plan(multisession)
+    result_matrices[[17]] <- t(future_sapply(1:n_sim, function(x) f_model_b(df_input[x, ])))
+    plan(sequential)
   },
   
-  approach18 = {
-    # 4c 
-    plan(multisession) ## Run in parallel on local computer
-    m_out_4c <- t(future_apply(X = matrix(seq_len(nrow(df_input))), MARGIN = 1, function(x) {
-      f_model_c(as.matrix(df_input[x,]))
-    }))
-    plan(sequential) # Stop running in parallel on local computer
+  approach18 = {  # Future multisession: f_model_c
+    plan(multisession)
+    result_matrices[[18]] <- t(future_sapply(1:n_sim, function(x) f_model_c(as.matrix(df_input[x, ]))))
+    plan(sequential)
   },
   
-  approach19 = {
-    # 4d 
-    plan(multisession) ## Run in parallel on local computer
-    m_out_4d <- t(future_sapply(1:n_sim, function(x) {
-      f_model_d(df_input[x, ])
-    }))
-    plan(sequential) # Stop running in parallel on local computer
+  approach19 = {  # Future multisession: f_model_d
+    plan(multisession)
+    result_matrices[[19]] <- t(future_sapply(1:n_sim, function(x) f_model_d(df_input[x, ])))
+    plan(sequential)
   },
   
-  approach20 = {
-    # 4e
-    plan(multisession) ## Run in parallel on local computer
-    m_out_4e <- t(future_sapply(1:n_sim, function(x) {
-      Rcpp::sourceCpp("f_propagate_states.cpp") # Rcpp functions compiled using sourceCpp() are available in the main R session but are not automatically exported to parallel workers, which typically start as separate R processes. Hence it requires explicit loading in workers (or compiling a package) 
+  approach20 = {  # Future multisession: f_model_e
+    plan(multisession)
+    result_matrices[[20]] <- t(future_sapply(1:n_sim, function(x) {
+      Rcpp::sourceCpp("f_propagate_states.cpp")
       f_model_e(df_input[x, ])
-    }, future.seed = TRUE))  # Ensures reproducible and safe random number generation
-    plan(sequential) # Stop running in parallel on local computer
+    }))
+    plan(sequential)
   },
   
-  times = 5#0 # how often each approach should be evaluated
+  times = 50
 )
 
-# make list of matrices
-matrices <- list(m_out_1a, m_out_2a, m_out_3a, m_out_4a, 
-                 m_out_1b, m_out_2b, m_out_3b, m_out_4b, 
-                 m_out_1c, m_out_2c, m_out_3c, m_out_4c, 
-                 m_out_1d, m_out_2d, m_out_3d, m_out_4d, 
-                 m_out_1e, m_out_2e, m_out_3e, m_out_4e)
-
-# compare matrices pairwise
-results <- lapply(seq_along(matrices), function(i) {
-  if (i == length(matrices)) {
-    matrices[[i]] - matrices[[1]]  # Compare last with first
+#### Compare Matrices ####
+# Pairwise comparison of matrices in the result list
+comparison_results <- lapply(seq_along(result_matrices), function(i) {
+  if (i == length(result_matrices)) {
+    result_matrices[[i]] - result_matrices[[1]]  # Compare last with first
   } else {
-    matrices[[i]] - matrices[[i + 1]]  # Compare with next
+    result_matrices[[i]] - result_matrices[[i + 1]]  # Compare with next
   }
 })
 
-results
+comparison_results
