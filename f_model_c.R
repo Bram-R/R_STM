@@ -17,7 +17,7 @@
 f_model_c <- function(params) {
   
   # Initialize transition probability matrices
-  a_P <- array(
+  a_transition <- array(
     data = 0,
     dim = c(n_treatments, n_t, n_states, n_states),
     dimnames = list(v_treatments, 1:n_t, v_states, v_states)
@@ -25,70 +25,70 @@ f_model_c <- function(params) {
   
   # Transition probabilities for treatment 1
   # Transitions from "Gezond"
-  a_P[1,, v_states[1], v_states[2]] <- params[1]  # Transition to "Ziek"
-  a_P[1,, v_states[1], v_states[3]] <- params[2]  # Transition to "Dood"
-  a_P[1,, v_states[1], v_states[1]] <- 1 - params[1] - params[2]  # Stay in "Gezond"
+  a_transition[1,, v_states[1], v_states[2]] <- params[1]  # Transition to "Ziek"
+  a_transition[1,, v_states[1], v_states[3]] <- params[2]  # Transition to "Dood"
+  a_transition[1,, v_states[1], v_states[1]] <- 1 - params[1] - params[2]  # Stay in "Gezond"
   
   # Transitions from "Ziek"
-  a_P[1,, v_states[2], v_states[1]] <- params[3]  # Transition to "Gezond"
-  a_P[1,, v_states[2], v_states[3]] <- params[4]  # Transition to "Dood"
-  a_P[1,, v_states[2], v_states[2]] <- 1 - params[3] - params[4]  # Stay in "Ziek"
+  a_transition[1,, v_states[2], v_states[1]] <- params[3]  # Transition to "Gezond"
+  a_transition[1,, v_states[2], v_states[3]] <- params[4]  # Transition to "Dood"
+  a_transition[1,, v_states[2], v_states[2]] <- 1 - params[3] - params[4]  # Stay in "Ziek"
   
   # Transitions from "Dood"
-  a_P[1,, v_states[3], v_states[3]] <- 1  # "Dood" is absorbing
+  a_transition[1,, v_states[3], v_states[3]] <- 1  # "Dood" is absorbing
   
   # Transition probabilities for treatment 2
-  a_P[2,,,] <- a_P[1,,,]
-  a_P[2,, v_states[1], v_states[2]] <- params[1] * params[5]  # Adjusted transition to "Ziek"
-  a_P[2,, v_states[1], v_states[3]] <- params[2]  # Transition to "Dood"
-  a_P[2,, v_states[1], v_states[1]] <- 1 - (params[1] * params[5]) - params[2]  # Stay in "Gezond"
+  a_transition[2,,,] <- a_transition[1,,,]
+  a_transition[2,, v_states[1], v_states[2]] <- params[1] * params[5]  # Adjusted transition to "Ziek"
+  a_transition[2,, v_states[1], v_states[3]] <- params[2]  # Transition to "Dood"
+  a_transition[2,, v_states[1], v_states[1]] <- 1 - (params[1] * params[5]) - params[2]  # Stay in "Gezond"
   
   # Initialize Markov trace
-  a_TR <- array(
+  a_state_trace <- array(
     data = NA,
     dim = c(n_treatments, n_t + 1, n_states),
     dimnames = list(v_treatments, 0:n_t, v_states)
   )
-  a_TR[1, 1,] <- a_TR[2, 1,] <- c(1, 0, 0)  # Starting state: "Gezond"
+  a_state_trace[1, 1,] <- a_state_trace[2, 1,] <- c(1, 0, 0)  # Starting state: "Gezond"
   
   # State transitions using nested loops
   for (i_treatment in 1:n_treatments) {
     for (t in 1:n_t) {
-      a_TR[i_treatment, t + 1, ] <- a_TR[i_treatment, t, ] %*% a_P[i_treatment, t, , ]
+      a_state_trace[i_treatment, t + 1, ] <- a_state_trace[i_treatment, t, ] %*% a_transition[i_treatment, t, , ]
     }
   }
   
   # create utility matrix
-  m_u <- matrix( 
+  m_utility <- matrix( 
     data = NA, 
     nrow = n_t + 1, 
     ncol = length(v_states)
   ) # end matrix
   
-  m_u <- cbind( 
+  m_utility <- cbind( 
     rep(x = params[6], times = n_t + 1), # Utility for "Gezond"
-    rep(x = params[7], times = n_t + 1),   # Utility for "Ziek"
-    rep(x = params[8], times = n_t + 1)    # Utility for "Dood"
+    rep(x = params[7], times = n_t + 1), # Utility for "Ziek"
+    rep(x = params[8], times = n_t + 1)  # Utility for "Dood"
   )
   
   # create cost matrix 
-  m_c <- matrix( 
+  m_cost <- matrix( 
     data = 0, 
     nrow = n_t + 1, 
     ncol = length(v_states)
   ) # end matrix
   
-  m_c <- cbind(
-    rep(x = params[9], times = n_t + 1), # Costs for "Gezond"
-    rep(x = params[10], times = n_t + 1),   # Costs for "Ziek"
-    rep(x = params[11], times = n_t + 1)    # Costs for "Dood"
+  m_cost <- cbind(
+    rep(x = params[9], times = n_t + 1),  # Costs for "Gezond"
+    rep(x = params[10], times = n_t + 1), # Costs for "Ziek"
+    rep(x = params[11], times = n_t + 1)  # Costs for "Dood"
   )
   
   # Estimate QALYs and costs
-  v_E_t1 <- mapply(FUN = '%*%', t(a_TR[1, , ]), t(m_u))  # QALYs for treatment 1
-  v_E_t2 <- mapply(FUN = '%*%', t(a_TR[2, , ]), t(m_u))  # QALYs for treatment 2
-  v_C_t1 <- mapply(FUN = '%*%', t(a_TR[1, , ]), t(m_c))  # Costs for treatment 1
-  v_C_t2 <- mapply(FUN = '%*%', t(a_TR[2, , ]), t(m_c))  # Costs for treatment 2
+  v_E_t1 <- mapply(FUN = '%*%', t(a_state_trace[1, , ]), t(m_utility))  # QALYs for treatment 1
+  v_E_t2 <- mapply(FUN = '%*%', t(a_state_trace[2, , ]), t(m_utility))  # QALYs for treatment 2
+  v_C_t1 <- mapply(FUN = '%*%', t(a_state_trace[1, , ]), t(m_cost))     # Costs for treatment 1
+  v_C_t2 <- mapply(FUN = '%*%', t(a_state_trace[2, , ]), t(m_cost))     # Costs for treatment 2
   
   # Return summed results
   return(c(sum(v_C_t1), sum(v_C_t2), sum(v_E_t1), sum(v_E_t2)))
