@@ -1,4 +1,3 @@
-#### Model calculations without df conversion for mapply ####
 #' @title State-Transition Model (without df conversion for mapply) 
 #' @description Calculates state transitions, QALYs, and costs
 #' @param params A data frame containing the following parameters:
