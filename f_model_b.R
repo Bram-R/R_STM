@@ -14,7 +14,6 @@
 #'   \code{c(cost_t1, cost_t2, QALY_t1, QALY_t2)}.
 #' @examples
 #' f_model_b(df_input[1, ])
-
 f_model_b <- function(params) {
   with(as.list(params), {
     
