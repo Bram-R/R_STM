@@ -1,4 +1,4 @@
-#' @title State-Transition Model (without df conversion for mapply) 
+#' @title State-Transition Model (without df conversion for mapply, without with()) 
 #' @description Calculates state transitions, QALYs, and costs
 #' @param params A data frame containing the following parameters:
 #'   \itemize{
@@ -14,7 +14,6 @@
 #'   \code{c(cost_t1, cost_t2, QALY_t1, QALY_t2)}.
 #' @examples
 #' f_model_c(df_input[1, ])
-
 f_model_c <- function(params) {
   
   ## set up transition probability matrix 
