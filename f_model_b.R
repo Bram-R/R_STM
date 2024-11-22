@@ -2,13 +2,13 @@
 #' @description Calculates state transitions, QALYs, and costs
 #' @param params A data frame containing the following parameters:
 #'   \itemize{
-#'     \item \code{p_gezond_ziek}: Transition probability from "Gezond" to "Ziek".
-#'     \item \code{p_gezond_dood}: Transition probability from "Gezond" to "Dood".
-#'     \item \code{p_ziek_gezond}: Transition probability from "Ziek" to "Gezond".
-#'     \item \code{p_ziek_dood}: Transition probability from "Ziek" to "Dood".
-#'     \item \code{rr_gezond_ziek_t2_t1}: Relative risk for new treatment.
-#'     \item \code{u_gezond}, \code{u_ziek}, \code{u_dood}: Utilities for each health state.
-#'     \item \code{c_gezond}, \code{c_ziek}, \code{c_dood}: Costs for each health state.
+#'     \item \code{p_healthy_sick}: Transition probability from "Healthy" to "Sick".
+#'     \item \code{p_healthy_death}: Transition probability from "Healthy" to "Death".
+#'     \item \code{p_sick_healthy}: Transition probability from "Sick" to "Healthy".
+#'     \item \code{p_sick_death}: Transition probability from "Sick" to "Death".
+#'     \item \code{rr_healthy_sick_t2_t1}: Relative risk for new treatment.
+#'     \item \code{u_healthy}, \code{u_sick}, \code{u_death}: Utilities for each health state.
+#'     \item \code{c_healthy}, \code{c_sick}, \code{c_death}: Costs for each health state.
 #'   }
 #' @return A numeric vector with the total costs and QALYs for each treatment:
 #'   \code{c(cost_t1, cost_t2, QALY_t1, QALY_t2)}.
@@ -26,24 +26,24 @@ f_model_b <- function(params) {
     )
     
     # Transition probabilities for treatment 1
-    # Transitions from "Gezond"
-    a_transition[1,, v_states[1], v_states[2]] <- p_gezond_ziek
-    a_transition[1,, v_states[1], v_states[3]] <- p_gezond_dood
-    a_transition[1,, v_states[1], v_states[1]] <- 1 - p_gezond_ziek - p_gezond_dood
+    # Transitions from "Healthy"
+    a_transition[1,, v_states[1], v_states[2]] <- p_healthy_sick
+    a_transition[1,, v_states[1], v_states[3]] <- p_healthy_death
+    a_transition[1,, v_states[1], v_states[1]] <- 1 - p_healthy_sick - p_healthy_death
     
-    # Transitions from "Ziek"
-    a_transition[1,, v_states[2], v_states[1]] <- p_ziek_gezond
-    a_transition[1,, v_states[2], v_states[3]] <- p_ziek_dood
-    a_transition[1,, v_states[2], v_states[2]] <- 1 - p_ziek_gezond - p_ziek_dood
+    # Transitions from "Sick"
+    a_transition[1,, v_states[2], v_states[1]] <- p_sick_healthy
+    a_transition[1,, v_states[2], v_states[3]] <- p_sick_death
+    a_transition[1,, v_states[2], v_states[2]] <- 1 - p_sick_healthy - p_sick_death
     
-    # Transitions from "Dood"
-    a_transition[1,, v_states[3], v_states[3]] <- 1  # "Dood" is absorbing
+    # Transitions from "Death"
+    a_transition[1,, v_states[3], v_states[3]] <- 1  # "Death" is absorbing
     
     # Transition probabilities for treatment 2 (copy from treatment 1, adjust for relative risk)
     a_transition[2,,,] <- a_transition[1,,,]
-    a_transition[2,, v_states[1], v_states[2]] <- p_gezond_ziek * rr_gezond_ziek_t2_t1
-    a_transition[2,, v_states[1], v_states[3]] <- p_gezond_dood
-    a_transition[2,, v_states[1], v_states[1]] <- 1 - (p_gezond_ziek * rr_gezond_ziek_t2_t1) - p_gezond_dood
+    a_transition[2,, v_states[1], v_states[2]] <- p_healthy_sick * rr_healthy_sick_t2_t1
+    a_transition[2,, v_states[1], v_states[3]] <- p_healthy_death
+    a_transition[2,, v_states[1], v_states[1]] <- 1 - (p_healthy_sick * rr_healthy_sick_t2_t1) - p_healthy_death
     
     # Initialize Markov trace
     a_state_trace <- array(
@@ -51,7 +51,7 @@ f_model_b <- function(params) {
       dim = c(n_treatments, n_t + 1, n_states),
       dimnames = list(v_treatments, 0:n_t, v_states)
     )
-    a_state_trace[1, 1,] <- a_state_trace[2, 1,] <- c(1, 0, 0)  # Starting state: "Gezond"
+    a_state_trace[1, 1,] <- a_state_trace[2, 1,] <- c(1, 0, 0)  # Starting state: "Healthy"
     
     # State transitions using nested loops
     for (i_treatment in 1:n_treatments) {
@@ -61,21 +61,29 @@ f_model_b <- function(params) {
     }
     
     # Create utility matrix
-    m_utility <- matrix(
-      data = c(rep(u_gezond, n_t + 1),  # Utility for "Gezond"
-               rep(u_ziek, n_t + 1),    # Utility for "Ziek"
-               rep(u_dood, n_t + 1)),   # Utility for "Dood"
-      nrow = n_t + 1,
+    m_utility <- matrix( 
+      data = NA, 
+      nrow = n_t + 1, 
       ncol = length(v_states)
+    ) 
+    
+    m_utility <- cbind( 
+      rep(x = u_healthy, times = n_t + 1), # Utility for "Healthy"
+      rep(x = u_sick, times = n_t + 1),    # Utility for "Sick"
+      rep(x = u_death, times = n_t + 1)    # Utility for "Death"
     )
     
-    # Create cost matrix
-    m_cost <- matrix(
-      data = c(rep(c_gezond, n_t + 1),  # Costs for "Gezond"
-               rep(c_ziek, n_t + 1),    # Costs for "Ziek"
-               rep(c_dood, n_t + 1)),   # Costs for "Dood"
-      nrow = n_t + 1,
+    # Create cost matrix 
+    m_cost <- matrix( 
+      data = 0, 
+      nrow = n_t + 1, 
       ncol = length(v_states)
+    ) 
+    
+    m_cost <- cbind(
+      rep(x = c_healthy, times = n_t + 1), # Costs for "Healthy"
+      rep(x = c_sick, times = n_t + 1),    # Costs for "Sick"
+      rep(x = c_death, times = n_t + 1)    # Costs for "Death"
     )
     
     # Estimate QALYs and costs

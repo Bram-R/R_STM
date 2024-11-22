@@ -22,7 +22,7 @@ source("f_model_e.R")
 sourceCpp("f_propagate_states.cpp")
 
 #### General ####
-v_states <- c("Gezond", "Ziek", "Dood") #  vector of model health states
+v_states <- c("Healthy", "Sick", "Death") #  vector of model health states
 n_states <- length(v_states) # number of health states 
 v_treatments <- c("Current_practice", "New_treatment") # vector of strategy names
 n_treatments <- length(v_treatments)  # number of treatments
@@ -33,20 +33,20 @@ set.seed(12345) # set seed
 #### Model inputs #### 
 df_input <- data.frame( # open input parameter dataframe
   # transition probabilities 
-  p_gezond_ziek = rbeta(n = n_sim, shape1 = 10, shape2 = 20), 
-  p_gezond_dood = rbeta(n = n_sim, shape1 = 1, shape2 = 20), 
-  p_ziek_gezond = rbeta(n = n_sim, shape1 = 5, shape2 = 20), 
-  p_ziek_dood = rbeta(n = n_sim, shape1 = 10, shape2 = 20),
+  p_healthy_sick = rbeta(n = n_sim, shape1 = 10, shape2 = 20), 
+  p_healthy_death = rbeta(n = n_sim, shape1 = 1, shape2 = 20), 
+  p_sick_healthy = rbeta(n = n_sim, shape1 = 5, shape2 = 20), 
+  p_sick_death = rbeta(n = n_sim, shape1 = 10, shape2 = 20),
   # relative risk (difference between treatments)
-  rr_gezond_ziek_t2_t1 = rlnorm(n = n_sim, meanlog = log(0.8), sdlog = 0.2),
+  rr_healthy_sick_t2_t1 = rlnorm(n = n_sim, meanlog = log(0.8), sdlog = 0.2),
   # health state utility (quality of life)
-  u_gezond = rbeta(n = n_sim, shape1 = 75, shape2 = 100), 
-  u_ziek = rbeta(n = n_sim, shape1 = 60, shape2 = 100), 
-  u_dood = rep(x = 0, times = n_sim),
+  u_healthy = rbeta(n = n_sim, shape1 = 75, shape2 = 100), 
+  u_sick = rbeta(n = n_sim, shape1 = 60, shape2 = 100), 
+  u_death = rep(x = 0, times = n_sim),
   # health state costs
-  c_gezond = rgamma(n = n_sim, shape = 75, scale = 100), 
-  c_ziek = rgamma(n = n_sim, shape = 100, scale = 100), 
-  c_dood = rep(x = 0, times = n_sim)
+  c_healthy = rgamma(n = n_sim, shape = 75, scale = 100), 
+  c_sick = rgamma(n = n_sim, shape = 100, scale = 100), 
+  c_death = rep(x = 0, times = n_sim)
 ) # close input parameter dataframe
 
 
