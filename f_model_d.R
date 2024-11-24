@@ -51,7 +51,7 @@ f_model_d <- function(params) {
     dim = c(n_treatments, n_t + 1, n_states),
     dimnames = list(v_treatments, 0:n_t, v_states)
   )
-  a_state_trace[1, 1, ] <- a_state_trace[2, 1, ] <- c(1, 0, 0)  # Starting health state: 1 "Healthy"
+  a_state_trace[, 1, ] <- matrix(c(1, 0, 0), nrow = n_treatments, ncol = n_states, byrow = TRUE) # Starting health state: 1 "Healthy"
   
   # State transitions using nested loops
   for (i_treatment in 1:n_treatments) {
