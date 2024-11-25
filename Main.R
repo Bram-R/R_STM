@@ -6,7 +6,7 @@ options(scipen = 999, max.print = 10000, digits = 4)
 
 # Load and install necessary libraries
 required_packages <- c(
-  "parallel", "future.apply", "microbenchmark", "Rcpp", "RcppArmadillo"
+  "parallel", "future.apply", "microbenchmark", "Rcpp", "RcppArmadillo", "docstring"
 )
 new_packages <- required_packages[!(required_packages %in% installed.packages()[, "Package"])]
 if (length(new_packages)) install.packages(new_packages)
@@ -196,7 +196,8 @@ m_results <- matrix(data = df_summary$mean, nrow = 5, ncol = 4, byrow = FALSE,
 m_results
 colSums(m_results)
 rowSums(m_results)
-m_results[1, ]
+m_results[ , 1] - m_results[ , 2]
+m_results[ , 3] - m_results[ , 4]
 
 write.csv(df_summary, file = paste0("benchmark n_sim = ", n_sim, " n_iterations = ", n_iterations, ".csv"), row.names = FALSE)
 write.csv(m_results, file = paste0("benchmark mean n_sim = ", n_sim, " n_iterations = ", n_iterations, ".csv"), row.names = FALSE)
