@@ -75,7 +75,7 @@ for (i in seq_along(result_matrices)) {
 }
 
 #### Evaluate Model Calculation Approaches ####
-microbenchmark(
+benchmark_results <- microbenchmark(
   approach1 = {  # Sequential loop: f_model_a
     for (x in 1:n_sim) result_matrices[[1]][x, ] <- f_model_a(df_input[x, ])
   },
@@ -187,7 +187,11 @@ microbenchmark(
   times = 20
 )
 
-#### Compare Matrices ####
+# benchmark_results
+# write(summary(benchmark_results), file = "microbenchmark_summary.txt")
+
+
+#### Compare Result Matrices ####
 # Pairwise comparison of matrices in the result list
 comparison_results <- lapply(seq_along(result_matrices), function(i) {
   if (i == length(result_matrices)) {
