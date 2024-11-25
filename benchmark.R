@@ -2,7 +2,7 @@ library(bench)
 library(tidyverse)
 
 # Define the number of iterations
-iterations <- 5
+n_iterations <- 5
 
 
 # Load functions from local scripts
@@ -16,7 +16,7 @@ n_states <- length(v_states) # number of health states
 v_treatments <- c("Current_practice", "New_treatment") # vector of strategy names
 n_treatments <- length(v_treatments)  # number of treatments
 n_t <- 100 # model time horizon 
-n_sim <- 5 #0 # number of Monte-carlo simulations for probabilistic analyses
+n_sim <- 5000  # Number of Monte Carlo simulations
 set.seed(12345) # set seed
 
 #### Model inputs #### 
@@ -52,7 +52,7 @@ m_out_1a <- m_out_2a <- m_out_3a <- m_out_4a <- m_out_1b <- m_out_2b <- m_out_3b
 benchmark_results <- bench::mark(
   approach1a = source(here::here("approach1a.R")),
   approach1b = source(here::here("approach1b.R")),
-  iterations = iterations
+  iterations = n_iterations
 )
 
 # qualitative scores
