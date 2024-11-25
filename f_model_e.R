@@ -14,8 +14,6 @@
 #' @examples
 #' f_model_e(df_input[1, ])
 f_model_e <- function(params) {
-  # Validate Rcpp source for parallel functionality
-  # Rcpp::sourceCpp("f_propagate_states.cpp")
   
   # Initialize transition probability matrices
   a_transition <- array(
@@ -74,6 +72,9 @@ f_model_e <- function(params) {
   v_qalys <- rowSums(a_state_trace[, , ]  * rep(m_utility, each = n_treatments))
   v_costs <- rowSums(a_state_trace[, , ]  * rep(m_cost, each = n_treatments))
   
-  # Return  results
-  return(c(v_costs, v_qalys))
+  # Named vector with results
+  v_results <- setNames(c(v_costs, v_qalys),                                              # Combined results
+                        c(paste0("Cost_", v_treatments), paste0("QALY_", v_treatments)))  # Result names 
+  
+  return(v_results)
 }

@@ -69,7 +69,7 @@ for (i in seq_along(result_matrices)) {
   result_matrices[[i]] <- matrix(
     data = NA,
     nrow = n_sim,
-    ncol = 4,
+    ncol = 2 * n_treatments,
     dimnames = list(1:n_sim, c(paste0("Cost_", v_treatments), paste0("QALY_", v_treatments)))
   )
 }

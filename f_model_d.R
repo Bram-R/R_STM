@@ -74,6 +74,9 @@ f_model_d <- function(params) {
   v_qalys <- rowSums(a_state_trace[, , ]  * rep(m_utility, each = n_treatments))
   v_costs <- rowSums(a_state_trace[, , ]  * rep(m_cost, each = n_treatments))
   
-  # Return  results
-  return(c(v_costs, v_qalys))
+  # Named vector with results
+  v_results <- setNames(c(v_costs, v_qalys),                                              # Combined results
+                        c(paste0("Cost_", v_treatments), paste0("QALY_", v_treatments)))  # Result names 
+  
+  return(v_results)
 }

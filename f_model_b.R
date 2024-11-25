@@ -26,24 +26,28 @@ f_model_b <- function(params) {
     )
     
     # Transition probabilities for treatment 1
-    # Transitions from "Healthy"
-    a_transition[1,, v_states[1], v_states[2]] <- p_healthy_sick
-    a_transition[1,, v_states[1], v_states[3]] <- p_healthy_death
-    a_transition[1,, v_states[1], v_states[1]] <- 1 - p_healthy_sick - p_healthy_death
+    # From health state 1 "Healthy"
+    a_transition[1,, v_states[1], v_states[1]] <- 1 - p_healthy_sick - p_healthy_death # Stay in health state 1 "Healthy"
+    a_transition[1,, v_states[1], v_states[2]] <- p_healthy_sick                       # Transition to health state 2 "Sick"
+    a_transition[1,, v_states[1], v_states[3]] <- p_healthy_death                      # Transition to health state 3 "Death"
     
-    # Transitions from "Sick"
-    a_transition[1,, v_states[2], v_states[1]] <- p_sick_healthy
-    a_transition[1,, v_states[2], v_states[3]] <- p_sick_death
-    a_transition[1,, v_states[2], v_states[2]] <- 1 - p_sick_healthy - p_sick_death
+    # From health state 2 "Sick"
+    a_transition[1,, v_states[2], v_states[1]] <- p_sick_healthy                       # Transition to health state 1 "Healthy"
+    a_transition[1,, v_states[2], v_states[2]] <- 1 - p_sick_healthy - p_sick_death    # Stay in health state 2 "Sick"
+    a_transition[1,, v_states[2], v_states[3]] <- p_sick_death                         # Transition to health state 3 "Death"
     
-    # Transitions from "Death"
-    a_transition[1,, v_states[3], v_states[3]] <- 1  # "Death" is absorbing
     
-    # Transition probabilities for treatment 2 (copy from treatment 1, adjust for relative risk)
+    # From health state 3 "Death"
+    a_transition[1,, v_states[3], v_states[3]] <- 1                                    # Heath state 3 "Death" is absorbing
+    
+    # Transition probabilities for treatment 2
+    # Copy from treatment 1
     a_transition[2,,,] <- a_transition[1,,,]
-    a_transition[2,, v_states[1], v_states[2]] <- p_healthy_sick * rr_healthy_sick_t2_t1
-    a_transition[2,, v_states[1], v_states[3]] <- p_healthy_death
-    a_transition[2,, v_states[1], v_states[1]] <- 1 - (p_healthy_sick * rr_healthy_sick_t2_t1) - p_healthy_death
+    
+    # From health state 1 "Healthy"
+    a_transition[2,, v_states[1], v_states[1]] <- 1 - (p_healthy_sick * rr_healthy_sick_t2_t1) - p_healthy_death  # Stay in health state 1 "Healthy"
+    a_transition[2,, v_states[1], v_states[2]] <- p_healthy_sick * rr_healthy_sick_t2_t1                          # Transition to health state 2 "Sick"
+    a_transition[2,, v_states[1], v_states[3]] <- p_healthy_death                                                 # Transition to health state 3 "Death"
     
     # Initialize Markov trace
     a_state_trace <- array(
@@ -51,7 +55,7 @@ f_model_b <- function(params) {
       dim = c(n_treatments, n_t + 1, n_states),
       dimnames = list(v_treatments, 0:n_t, v_states)
     )
-    a_state_trace[1, 1,] <- a_state_trace[2, 1,] <- c(1, 0, 0)  # Starting state: "Healthy"
+    a_state_trace[1, 1,] <- a_state_trace[2, 1,] <- c(1, 0, 0) # Starting health state: 1 "Healthy"
     
     # State transitions using nested loops
     for (i_treatment in 1:n_treatments) {
@@ -68,9 +72,9 @@ f_model_b <- function(params) {
     ) 
     
     m_utility <- cbind( 
-      rep(x = u_healthy, times = n_t + 1), # Utility for "Healthy"
-      rep(x = u_sick, times = n_t + 1),    # Utility for "Sick"
-      rep(x = u_death, times = n_t + 1)    # Utility for "Death"
+      rep(x = u_healthy, times = n_t + 1), # Utility for health state 1 "Healthy"
+      rep(x = u_sick, times = n_t + 1),    # Utility for health state 2 "Sick"
+      rep(x = u_death, times = n_t + 1)    # Utility for health state 3 "Death"
     )
     
     # Create cost matrix 
@@ -81,9 +85,9 @@ f_model_b <- function(params) {
     ) 
     
     m_cost <- cbind(
-      rep(x = c_healthy, times = n_t + 1), # Costs for "Healthy"
-      rep(x = c_sick, times = n_t + 1),    # Costs for "Sick"
-      rep(x = c_death, times = n_t + 1)    # Costs for "Death"
+      rep(x = c_healthy, times = n_t + 1), # Costs for health state 1 "Healthy"
+      rep(x = c_sick, times = n_t + 1),    # Costs for health state 2 "Sick"
+      rep(x = c_death, times = n_t + 1)    # Costs for health state 3 "Death"
     )
     
     # Estimate QALYs and costs
@@ -92,8 +96,10 @@ f_model_b <- function(params) {
     v_C_t1 <- mapply(FUN = '%*%', t(a_state_trace[1, , ]), t(m_cost))     # Costs for treatment 1
     v_C_t2 <- mapply(FUN = '%*%', t(a_state_trace[2, , ]), t(m_cost))     # Costs for treatment 2
     
-    # Return summed results
-    return(c(sum(v_C_t1), sum(v_C_t2), sum(v_E_t1), sum(v_E_t2)))
+    # Named vector with results
+    v_results <- setNames(c(sum(v_C_t1), sum(v_C_t2), sum(v_E_t1), sum(v_E_t2)),            # Combined results
+                          c(paste0("Cost_", v_treatments), paste0("QALY_", v_treatments)))  # Result names 
     
+    return(v_results)
   })
 }
