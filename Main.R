@@ -16,11 +16,12 @@ suppressPackageStartupMessages(lapply(required_packages, require, character.only
 rm(list = ls())
 
 # Load custom functions
-source("f_model_a.R")
-source("f_model_b.R")
-source("f_model_c.R")
-source("f_model_d.R")
-source("f_model_e.R")
+source("f_model_a.R") # check function using: docstring(f_model_a)
+source("f_model_b.R") # check function using: docstring(f_model_b)
+source("f_model_c.R") # check function using: docstring(f_model_c)
+source("f_model_d.R") # check function using: docstring(f_model_d)
+source("f_model_e.R") # check function using: docstring(f_model_e)
+# source("f_model_matrix.R") # check function using: docstring(f_model_matrix)
 
 # Load Rcpp function for state propagation
 sourceCpp("f_propagate_states.cpp")
@@ -57,9 +58,10 @@ df_input <- data.frame(
 
 # f_model_a(df_input[1, ])
 # f_model_b(df_input[1, ])
-# f_model_c(as.matrix(df_input[1, ]))
+# f_model_c(df_input[1, ])
 # f_model_d(df_input[1, ])
 # f_model_e(df_input[1, ])
+# f_model_matrix(as.matrix(df_input[1, ]))
 
 #### Create Matrices for Results ####
 # Use a list to store result matrices
@@ -86,7 +88,7 @@ df_benchmark_results <- microbenchmark(
   },
   
   approach3 = {  # Sequential loop: f_model_c
-    for (x in 1:n_sim) l_result_matrices[[3]][x, ] <- f_model_c(as.matrix(df_input[x, ]))
+    for (x in 1:n_sim) l_result_matrices[[3]][x, ] <- f_model_c(df_input[x, ])
   },
   
   approach4 = {  # Sequential loop: f_model_d
@@ -106,7 +108,7 @@ df_benchmark_results <- microbenchmark(
   },
   
   approach8 = {  # Apply-based approach: f_model_c
-    l_result_matrices[[8]] <- t(apply(matrix(seq_len(nrow(df_input))), 1, function(x) f_model_c(as.matrix(df_input[x, ]))))
+    l_result_matrices[[8]] <- t(apply(matrix(seq_len(nrow(df_input))), 1, function(x) f_model_c(df_input[x, ])))
   },
   
   approach9 = {  # Apply-based approach: f_model_d
@@ -134,7 +136,7 @@ df_benchmark_results <- microbenchmark(
   approach13 = {  # Parallel: f_model_c
     cl <- makeCluster(detectCores())
     clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments", "n_t", "df_input", "f_model_c"))
-    l_result_matrices[[13]] <- do.call(rbind, parLapply(cl, 1:n_sim, function(x) f_model_c(as.matrix(df_input[x, ]))))
+    l_result_matrices[[13]] <- do.call(rbind, parLapply(cl, 1:n_sim, function(x) f_model_c(df_input[x, ])))
     stopCluster(cl)
   },
   
@@ -167,7 +169,7 @@ df_benchmark_results <- microbenchmark(
   
   approach18 = {  # Future multisession: f_model_c
     plan(multisession)
-    l_result_matrices[[18]] <- t(future_sapply(1:n_sim, function(x) f_model_c(as.matrix(df_input[x, ])), future.seed = TRUE))
+    l_result_matrices[[18]] <- t(future_sapply(1:n_sim, function(x) f_model_c(df_input[x, ]), future.seed = TRUE))
     plan(sequential)
   },
   
@@ -196,11 +198,11 @@ m_results <- matrix(data = df_summary$mean, nrow = 5, ncol = 4, byrow = FALSE,
 m_results
 colSums(m_results)
 rowSums(m_results)
-m_results[ , 1] - m_results[ , 2]
-m_results[ , 3] - m_results[ , 4]
+# m_results[ , 1] - m_results[ , 2]
+# m_results[ , 3] - m_results[ , 4]
 
-write.csv(df_summary, file = paste0("benchmark n_sim = ", n_sim, " n_iterations = ", n_iterations, ".csv"), row.names = FALSE)
-write.csv(m_results, file = paste0("benchmark mean n_sim = ", n_sim, " n_iterations = ", n_iterations, ".csv"), row.names = FALSE)
+write.csv(df_summary, file = paste0("benchmark n_sim = ", n_sim, " n_iterations = ", n_iterations," ", Sys.info()[4], ".csv"), row.names = FALSE)
+write.csv(m_results, file = paste0("benchmark mean n_sim = ", n_sim, " n_iterations = ", n_iterations," ", Sys.info()[4], ".csv"), row.names = TRUE)
 
 # sum(df_summary$mean) / 60 # time (minutes) per iteration
 
