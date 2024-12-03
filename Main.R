@@ -1,5 +1,5 @@
 #### Description: Simple Probabilistic State-Transition Model ####
-#### Conventions: n = single number, v = vector, df = dataframe, m = matrix, a = array ####
+#### Conventions: n = single number, v = vector, df = dataframe, m = matrix, a = array, l = list ####
 
 # General settings
 options(scipen = 999, max.print = 10000, digits = 4)
