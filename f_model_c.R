@@ -100,3 +100,20 @@ f_model_c <- function(params) {
   
   return(v_results)
 }
+
+# Test
+# # Defined names vector for input parameters
+# v_params_test <- c(p_healthy_sick = 0.4,
+#                    p_healthy_death = 0.1,
+#                    p_sick_healthy = 0.2,
+#                    p_sick_death = 0.3,
+#                    rr_healthy_sick_t2_t1 = 0.5,
+#                    u_healthy = 1,
+#                    u_sick = 0.5,
+#                    u_death = 0,
+#                    c_healthy = 100,
+#                    c_sick = 1000,
+#                    c_death = 0)
+# 
+# # Test the model
+# f_model_c(params)
