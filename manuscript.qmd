@@ -33,15 +33,13 @@ This study aims to systematically evaluate and enhance the performance of the st
 
 # Methods
 
-This study adopted a structured approach to evaluate and optimise the performance of the state transition model (STM) code provided by the DARTH framework in R. To this end, we systematically explored the original baseline code and 20 different computational approaches to assess their impact on execution time, memory usage, and code readability. Performance metrics, including execution time and memory usage, were measured using the bench package (version `r packageVersion("bench")`),[@R-bench] which allowed for simultaneous assessment of these key parameters. We used an arbitrary `r n_iterations` iterations per approach to capture variance in the measurements.
-
-The baseline performance of the standard DARTH framework code was established as a reference point for comparison and executed without any modifications.
+This study adopted a structured approach to evaluate and optimise the performance of a commonly used state transition model (STM) code based on the DARTH framework in R. To this end, we systematically explored the baseline code and 20 different computational approaches to assess their impact on execution time, memory usage, and garbage collection (GC). The performance metrics were measured using the "bench" package (version `r packageVersion("bench")`),[@R-bench] which allowed for simultaneous assessment of these key parameters.
 
 ## Tested model
 
-Following the baseline assessment, a series of computational models were developed, each designed to explore specific optimisation strategies to improve performance. These different approaches allowed us to systematically evaluate the impact of various modifications on execution time, memory usage, and code readability.
+These different models allowed us to systematically evaluate the impact of various modifications on execution time, memory usage, and GC.
 
-For this purpose, we implemented five distinct models, each with a unique focus on different aspects of computational optimisation. The objective was to test a variety of strategies, from data structure conversions to advanced coding techniques, in order to achieve a well-balanced combination of computational speed, efficiency, and ease of understanding.
+For this purpose, we implemented five distinct models (A to E), each with a unique focus on different aspects of computational optimisation. The objective was to test a variety of strategies, from data structure conversions to advanced coding techniques.
 
 > Based on R-Shiny
 
@@ -67,7 +65,7 @@ Model E used `Rcpp` to integrate C++ code for calculating state transitions, sig
 
 ## Evaluation of model calculation approaches
 
-To assess the performance of these different models, we implemented a series of calculation approaches, each designed to evaluate how effectively the models could be applied in various computational scenarios. The evaluation involved running each model across multiple iterations using different execution methods, including sequential loops, apply-based approaches, and parallelisation techniques.
+To assess the performance of these different models, we implemented a series of calculation approaches, each designed to evaluate how effectively the models could be applied in various computational scenarios. The evaluation involved running each model using different execution methods, including sequential loops, apply-based approaches, and parallelisation techniques. We used an arbitrary `r n_iterations` iterations per approach to capture variance in the measurements.
 
 We began by testing each model using a sequential loop, applying the models individually to simulate data. This approach helped us establish a baseline for how each model performed when executed without any parallelisation or vectorisation optimisations. Following this, we introduced apply-based techniques, which allowed us to test whether leveraging vectorised operations could improve computational speed and efficiency.
 
