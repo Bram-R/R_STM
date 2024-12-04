@@ -33,9 +33,49 @@ This study aims to systematically evaluate and enhance the performance of the st
 
 # Methods
 
-This study adopted a structured approach to evaluate and optimise the performance of the state transition model (STM) code provided by the DARTH framework in R. To this end, we systematically explored the original baseline code and 12 different computational approaches to assess their impact on execution time, memory usage, and code readability. Performance metrics, including execution time and memory usage, were measured using the bench package (version `r packageVersion("bench")`),[@R-bench] which allowed for simultaneous assessment of these key parameters. We used an arbitrary ten iterations per approach to capture variance in the measurements.
+This study adopted a structured approach to evaluate and optimise the performance of the state transition model (STM) code provided by the DARTH framework in R. To this end, we systematically explored the original baseline code and 20 different computational approaches to assess their impact on execution time, memory usage, and code readability. Performance metrics, including execution time and memory usage, were measured using the bench package (version `r packageVersion("bench")`),[@R-bench] which allowed for simultaneous assessment of these key parameters. We used an arbitrary `r n_iterations` iterations per approach to capture variance in the measurements.
 
-The baseline performance of the standard DARTH framework code was established as a reference point for comparison and executed without any modifications. Following the baseline assessment, 12 distinct computational approaches are implemented, each designed to explore various optimisation strategies:
+The baseline performance of the standard DARTH framework code was established as a reference point for comparison and executed without any modifications.
+
+## Tested model
+
+Following the baseline assessment, a series of computational models were developed, each designed to explore specific optimisation strategies to improve performance. These different approaches allowed us to systematically evaluate the impact of various modifications on execution time, memory usage, and code readability.
+
+For this purpose, we implemented five distinct models, each with a unique focus on different aspects of computational optimisation. The objective was to test a variety of strategies, from data structure conversions to advanced coding techniques, in order to achieve a well-balanced combination of computational speed, efficiency, and ease of understanding.
+
+> Based on R-Shiny
+
+### Model A: Data drame conversion for `mapply`
+
+Model A represents the baseline approach, using data frame conversion for key operations with the mapply function. By converting matrices to data frames, this model aims to assess whether this approach improves flexibility and readability. However, the added conversion steps can introduce computational overhead, particularly for larger datasets, potentially impacting performance.
+
+### Model B: Without data frame conversion
+
+Model B streamlines the computations by avoiding data frame conversion and using matrices directly with mapply. This approach is expected to be faster by reducing conversion overhead, but it may be less intuitive to understand compared to data frames, making it harder to visualise intermediate data structures. Model B serves as a point of comparison for the trade-off between readability and performance.
+
+### Model C: Without `with()` and data frame conversion
+
+Model C builds on Model B by also removing the `with()` function, instead accessing parameters directly. This makes the code more explicit and can simplify debugging, as it avoids scoping issues. However, this approach increases verbosity, potentially making the code seem more complex. Model C was designed to balance explicit parameter handling against code conciseness.
+
+### Model D: Optimised transition matrices
+
+Model D optimised the initialisation of transition matrices by employing vectorised operations with the `matrix()` function. Instead of assigning transition probabilities individually, this model constructs matrices in a single step, improving computational efficiency and reducing memory allocation. While vectorisation can speed up execution, it may be less intuitive for those used to step-by-step assignments, making it best suited for users comfortable with advanced matrix operations.
+
+### Model E: Using Rcpp for state transitions
+
+Model E used `Rcpp` to integrate C++ code for calculating state transitions, significantly enhancing computational efficiency. Offloading intensive calculations to C++ reduces execution time, making this model ideal for large-scale scenarios. While `Rcpp` provides substantial performance gains, it requires familiarity with C++ and introduces cross-platform compilation challenges. Model E is designed for advanced users aiming for maximum performance in computationally heavy analyses.
+
+## Evaluation of model calculation approaches
+
+To assess the performance of these different models, we implemented a series of calculation approaches, each designed to evaluate how effectively the models could be applied in various computational scenarios. The evaluation involved running each model across multiple iterations using different execution methods, including sequential loops, apply-based approaches, and parallelisation techniques.
+
+We began by testing each model using a sequential loop, applying the models individually to simulate data. This approach helped us establish a baseline for how each model performed when executed without any parallelisation or vectorisation optimisations. Following this, we introduced apply-based techniques, which allowed us to test whether leveraging vectorised operations could improve computational speed and efficiency.
+
+To further enhance performance, we then explored parallel processing methods. These approaches used multiple CPU cores to distribute computations, aiming to reduce execution time by running multiple simulations concurrently. For the parallel methods, we utilised both the base R parallel package and the future package to evaluate how different parallelisation strategies impacted the efficiency of each model.
+
+Each of the twenty approaches we implemented was benchmarked using microbenchmark, allowing us to systematically compare execution times and determine which combination of model and calculation method provided the best balance between computational speed, memory usage, and overall practicality. By evaluating the performance of sequential, apply-based, and parallelised methods, we gained a comprehensive understanding of how these models can be optimised for different use cases in health economic evaluations.
+
+
 
 1.  Vectorisation to replace loops
 2.  Parallelisation using R packages such as parallel (version `r packageVersion("parallel")`)[@RJ-2021-048] and future.apply (version `r packageVersion("future.apply")`),[@R-future] to distribute computational tasks across multiple CPU cores (if available)

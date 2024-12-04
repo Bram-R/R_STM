@@ -1,3 +1,6 @@
+#### Description: Simple Probabilistic State-Transition Model ####
+#### Conventions: n = single number, v = vector, df = dataframe, m = matrix, a = array, l = list ####
+
 # Load packages ----------------------------------------------------------------
 
 # Check if pacman package is installed. If not, install it
@@ -22,17 +25,20 @@ pacman::p_load(v_packages, character.only = TRUE)
 # Settings ----------------------------------------------------------------
 
 # General settings
-options(scipen = 999, max.print = 10000, digits = 4)
+options(scipen = 999, max.print = 10000)
 
 # Define the number of iterations per benchmark
-n_iterations <- 5
+n_iterations <- 2
 
 # Load custom functions
 source("f_model_a.R") # check function using: docstring(f_model_a)
 source("f_model_b.R") # check function using: docstring(f_model_b)
-# source("f_model_c.R") # check function using: docstring(f_model_c)
-# source("f_model_d.R") # check function using: docstring(f_model_d)
-# source("f_model_e.R") # check function using: docstring(f_model_e)
+source("f_model_c.R") # check function using: docstring(f_model_c)
+source("f_model_d.R") # check function using: docstring(f_model_d)
+source("f_model_e.R") # check function using: docstring(f_model_e)
+
+# Load Rcpp function for state propagation
+sourceCpp("f_propagate_states.cpp")
 
 
 #### General model set-up ####
@@ -41,7 +47,7 @@ n_states <- length(v_states) # number of health states
 v_treatments <- c("Current_practice", "New_treatment") # vector of strategy names
 n_treatments <- length(v_treatments)  # number of treatments
 n_t <- 100 # model time horizon 
-n_sim <- 5000  # Number of Monte Carlo simulations
+n_sim <- 50  # Number of Monte Carlo simulations
 set.seed(134340) # set seed
 
 #### Model inputs #### 
@@ -77,25 +83,104 @@ for (i in seq_along(l_result_matrices)) {
   )
 }
 
-
 # Benchmark each approach
 benchmark_results <- bench::mark(
+  # loop approach
   a_loop = 
     # Sequential loop: f_model_a
     for (x in 1:n_sim) l_result_matrices[[1]][x, ] <- f_model_a(df_input[x, ]),
   b_loop = 
     # Sequential loop: f_model_b
     for (x in 1:n_sim) l_result_matrices[[2]][x, ] <- f_model_b(df_input[x, ]),
-  # c_loop =
-  #   # Sequential loop: f_model_c
-  #   for (x in 1:n_sim) l_result_matrices[[3]][x, ] <- f_model_c(df_input[x, ]),
-  # d_loop =
-  #   # Sequential loop: f_model_d
-  #   for (x in 1:n_sim) l_result_matrices[[4]][x, ] <- f_model_d(df_input[x, ]),
-  # e_loop =
-  #   # Sequential loop: f_model_e
-  #   for (x in 1:n_sim) l_result_matrices[[5]][x, ] <- f_model_e(df_input[x, ]),
-  iterations = n_iterations
+  c_loop =
+     # Sequential loop: f_model_c
+     for (x in 1:n_sim) l_result_matrices[[3]][x, ] <- f_model_c(df_input[x, ]),
+  d_loop =
+     # Sequential loop: f_model_d
+     for (x in 1:n_sim) l_result_matrices[[4]][x, ] <- f_model_d(df_input[x, ]),
+  e_loop =
+    # Sequential loop: f_model_e
+    for (x in 1:n_sim) l_result_matrices[[5]][x, ] <- f_model_e(df_input[x, ]),
+  # Apply-based approach
+  # Apply-based: f_model_a
+  a_apply = 
+    l_result_matrices[[6]] <- t(apply(matrix(seq_len(nrow(df_input))),
+                                      1, function(x) f_model_a(df_input[x, ]))),
+  # Apply-based: f_model_b
+  b_apply = 
+    l_result_matrices[[7]] <- t(apply(matrix(seq_len(nrow(df_input))),
+                                      1, function(x) f_model_b(df_input[x, ]))),
+  # Apply-based: f_model_c
+  c_apply =
+    l_result_matrices[[8]] <- t(apply(matrix(seq_len(nrow(df_input))),
+                                      1, function(x) f_model_c(df_input[x, ]))),
+  # Apply-based: f_model_d
+  d_apply =
+    l_result_matrices[[9]] <- t(apply(matrix(seq_len(nrow(df_input))),
+                                      1, function(x) f_model_d(df_input[x, ]))),
+  # Apply-based: f_model_e
+  e_apply =
+    l_result_matrices[[10]] <- t(apply(matrix(seq_len(nrow(df_input))),
+                                      1, function(x) f_model_e(df_input[x, ]))),
+  # Parallel-based approach
+  # Parallel: f_model_a
+  a_parallel = {
+    # Parallel-based: f_model_a
+    cl <- makeCluster(detectCores())
+    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments",
+                        "n_t", "df_input", "f_model_a"))
+    l_result_matrices[[11]] <- do.call(rbind, parLapply(cl,
+                                                        1:n_sim,
+                                                        function(x) f_model_a(
+                                                          df_input[x, ])))
+    stopCluster(cl)},
+  # Parallel: f_model_b
+  b_parallel = {
+    # Parallel-based: f_model_b
+    cl <- makeCluster(detectCores())
+    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments",
+                        "n_t", "df_input", "f_model_b"))
+    l_result_matrices[[12]] <- do.call(rbind, parLapply(cl,
+                                                        1:n_sim,
+                                                        function(x) f_model_b(
+                                                          df_input[x, ])))
+    stopCluster(cl)},
+  # Parallel: f_model_c
+  c_parallel = {
+    # Parallel-based: f_model_c
+    cl <- makeCluster(detectCores())
+    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments",
+                        "n_t", "df_input", "f_model_c"))
+    l_result_matrices[[13]] <- do.call(rbind, parLapply(cl,
+                                                        1:n_sim,
+                                                        function(x) f_model_c(
+                                                          df_input[x, ])))
+    stopCluster(cl)},
+  # Parallel: f_model_d
+  d_parallel = {
+    # Parallel-based: f_model_d
+    cl <- makeCluster(detectCores())
+    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments",
+                        "n_t", "df_input", "f_model_d"))
+    l_result_matrices[[14]] <- do.call(rbind, parLapply(cl,
+                                                        1:n_sim,
+                                                        function(x) f_model_d(
+                                                          df_input[x, ])))
+    stopCluster(cl)},
+  # Parallel: f_model_e
+  e_parallel = {
+    # Parallel-based: f_model_e
+    cl <- makeCluster(detectCores())
+    clusterExport(cl, c("v_states", "n_states", "v_treatments", "n_treatments",
+                        "n_t", "df_input", "f_model_e"))
+    l_result_matrices[[15]] <- do.call(rbind, parLapply(cl,
+                                                        1:n_sim,
+                                                        function(x) f_model_e(
+                                                          df_input[x, ])))
+    stopCluster(cl)},
+  
+  iterations = n_iterations,
+  check = F
 )
 
 benchmark_results
